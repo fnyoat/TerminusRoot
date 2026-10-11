@@ -8,8 +8,24 @@
     <TextView
         android:id="@+id/headerTitle"
         style="@style/TitleBar"
+        app:layout_constraintEnd_toStartOf="@id/linkQuick"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/linkQuick"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:contentDescription="@string/quick_collection"
+        android:paddingStart="12dp"
+        android:paddingEnd="16dp"
+        android:text="@string/quick_collection"
+        android:textColor="@color/terminal_text"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toBottomOf="@id/headerTitle"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/headerTitle" />
 
     <View
         android:id="@+id/headerDivider"

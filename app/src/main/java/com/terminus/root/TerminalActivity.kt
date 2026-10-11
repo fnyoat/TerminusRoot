@@ -13,6 +13,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.termux.terminal.TerminalColors
 import com.termux.terminal.TerminalSession
@@ -54,8 +55,12 @@ class TerminalActivity : AppCompatActivity() {
         headerTitle.text = session.name
         val color = TermSettings.color(this)
         headerTitle.setTextColor(color)
+        val linkQuick = findViewById<TextView>(R.id.linkQuick)
+        linkQuick.setTextColor(color)
+        linkQuick.setOnClickListener { showQuickDialog() }
 
         if (session.useShizuku) {
+            linkQuick.visibility = View.GONE
             setupShizukuMode(color)
         } else {
             setupTerminalMode(color)
@@ -91,6 +96,80 @@ class TerminalActivity : AppCompatActivity() {
         val colors = terminal.emulator?.mColors ?: return
         colors.mCurrentColors[TextStyle.COLOR_INDEX_FOREGROUND] = fg
         colors.mCurrentColors[TextStyle.COLOR_INDEX_CURSOR] = fg
+    }
+
+    private fun showQuickDialog() {
+        val entries = TermSettings.quickEntries(this).toMutableList()
+        val items = mutableListOf<String>()
+        if (entries.isEmpty()) items.add(getString(R.string.quick_empty))
+        else entries.forEach { items.add(it.label.ifEmpty { it.value }) }
+        items.add(getString(R.string.quick_add))
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.quick_collection)
+            .setItems(items.toTypedArray()) { _, which ->
+                when {
+                    which < entries.size -> runQuickEntry(entries[which])
+                    else -> showQuickAddDialog()
+                }
+            }
+            .setNegativeButton(R.string.close, null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.listView.setOnItemLongClickListener { _, _, position, _ ->
+                if (position < entries.size) {
+                    confirmDeleteQuick(entries, position)
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun showQuickAddDialog() {
+        val view = layoutInflater.inflate(R.layout.dialog_quick, null)
+        val editName = view.findViewById<EditText>(R.id.editQuickName)
+        val editValue = view.findViewById<EditText>(R.id.editQuickValue)
+        val checkDir = view.findViewById<android.widget.CheckBox>(R.id.checkQuickDir)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.quick_add)
+            .setView(view)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                val value = editValue.text.toString().trim()
+                if (value.isEmpty()) return@setPositiveButton
+                val entry = TermSettings.QuickEntry(
+                    editName.text.toString().trim(),
+                    value,
+                    checkDir.isChecked
+                )
+                TermSettings.setQuickEntries(this, TermSettings.quickEntries(this) + entry)
+                showQuickDialog()
+            }
+            .show()
+    }
+
+    private fun confirmDeleteQuick(entries: MutableList<TermSettings.QuickEntry>, index: Int) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.quick_delete_confirm)
+            .setMessage(entries[index].label.ifEmpty { entries[index].value })
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                val updated = TermSettings.quickEntries(this).toMutableList()
+                if (index < updated.size) updated.removeAt(index)
+                TermSettings.setQuickEntries(this, updated)
+                showQuickDialog()
+            }
+            .show()
+    }
+
+    private fun runQuickEntry(entry: TermSettings.QuickEntry) {
+        val target = terminalSession ?: return
+        val text = if (entry.isDir) "cd ${shQuote(entry.value)}\n" else entry.value + "\n"
+        val bytes = text.toByteArray()
+        target.write(bytes, 0, bytes.size)
     }
 
     private fun buildLaunchCommand(): Triple<String, Array<String>, String> {
