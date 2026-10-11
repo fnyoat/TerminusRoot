@@ -71,6 +71,11 @@ class TerminalActivity : AppCompatActivity() {
         terminalSession = terminal
         termView.attachSession(terminal)
         termView.requestFocus()
+        termView.postDelayed({
+            val em = terminalSession?.getEmulator()
+            val screen = em?.getScreen()?.getSelectedText(0, 0, em.mColumns, em.mRows)
+            Log.i(TAG, "term screen: " + screen?.replace("\n", "|"))
+        }, 1500)
     }
 
     private fun buildLaunchCommand(): Triple<String, Array<String>, String> {
@@ -220,7 +225,9 @@ class TerminalActivity : AppCompatActivity() {
     }
 
     private val sessionClient = object : TerminalSessionClient {
-        override fun onTextChanged(changedSession: TerminalSession?) {}
+        override fun onTextChanged(changedSession: TerminalSession?) {
+            termView.onScreenUpdated()
+        }
 
         override fun onTitleChanged(changedSession: TerminalSession?) {}
 
