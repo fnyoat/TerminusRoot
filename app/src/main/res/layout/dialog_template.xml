@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:hint="@string/template_name">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editTemplateName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:hint="@string/guid">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editGuid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:hint="@string/path_cwd">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editPathCwd"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:hint="@string/chroot_view">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editChrootView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:hint="@string/shell">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editShell"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="/bin/sh" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:hint="@string/extra_args">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editExtraArgs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <CheckBox
+            android:id="@+id/checkUseSu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/use_su" />
+
+        <CheckBox
+            android:id="@+id/checkShizuku"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/use_shizuku" />
+    </LinearLayout>
+</ScrollView>
