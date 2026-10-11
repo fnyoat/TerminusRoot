@@ -29,6 +29,36 @@
         app:layout_constraintTop_toBottomOf="@id/headerDivider">
 
         <LinearLayout
+            android:id="@+id/rowTemplates"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/templates"
+                android:textColor="@color/terminal_text"
+                android:textSize="15sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#66FFFFFF"
+                android:textSize="18sp"
+                android:text="›" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#2E2E2E" />
+
+        <LinearLayout
             android:id="@+id/rowDefaultTemplate"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -1,5 +1,6 @@
 package com.terminus.root
 
+import android.content.Intent
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.View
@@ -26,6 +27,9 @@ class SettingsActivity : AppCompatActivity() {
         textFontSize = findViewById(R.id.textFontSize)
         findViewById<TextView>(R.id.headerTitle).setTextColor(TermSettings.color(this))
 
+        findViewById<View>(R.id.rowTemplates).setOnClickListener {
+            startActivity(Intent(this, TemplatesActivity::class.java))
+        }
         findViewById<View>(R.id.rowDefaultTemplate).setOnClickListener { showDefaultTemplateDialog() }
         findViewById<View>(R.id.rowColor).setOnClickListener { showColorDialog() }
         findViewById<View>(R.id.rowFontSize).setOnClickListener { showFontSizeDialog() }
@@ -93,7 +97,7 @@ class SettingsActivity : AppCompatActivity() {
         val sizes = TermSettings.FONT_SIZES
         val names = sizes.map { getString(R.string.font_size_value, it) }.toTypedArray()
         val current = TermSettings.fontSize(this)
-        val selectedIndex = sizes.indexOfFirst { it == current }.let { if (it < 0) sizes.indexOf(12) else it }
+        val selectedIndex = sizes.indexOfFirst { it == current }.let { if (it < 0) sizes.indexOf(30) else it }
         AlertDialog.Builder(this)
             .setTitle(R.string.select_font_size)
             .setSingleChoiceItems(names, selectedIndex) { dialog, which ->

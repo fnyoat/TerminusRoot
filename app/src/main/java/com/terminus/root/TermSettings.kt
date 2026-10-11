@@ -12,7 +12,7 @@ object TermSettings {
 
     const val DEFAULT_TEMPLATE_AUTO = "auto"
 
-    val FONT_SIZES = listOf(9, 10, 11, 12, 14, 16, 18, 22, 26, 32)
+    val FONT_SIZES = listOf(18, 22, 26, 30, 34, 40, 48, 56)
 
     data class Preset(val name: String, val color: Int)
 
@@ -45,7 +45,7 @@ object TermSettings {
     }
 
     fun fontSize(context: Context): Int =
-        prefs(context).getInt(KEY_FONT_SIZE, FONT_SIZES[2])
+        prefs(context).getInt(KEY_FONT_SIZE, 30)
 
     fun setFontSize(context: Context, size: Int) {
         prefs(context).edit { putInt(KEY_FONT_SIZE, size) }

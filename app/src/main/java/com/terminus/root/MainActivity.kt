@@ -15,7 +15,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textEmpty: TextView
     private lateinit var fab: FloatingActionButton
     private lateinit var headerTitle: TextView
-    private lateinit var headerLink: TextView
     private lateinit var settingsLink: TextView
     private lateinit var manager: SessionManager
     private lateinit var adapter: SessionAdapter
@@ -30,7 +29,6 @@ class MainActivity : AppCompatActivity() {
         textEmpty = findViewById(R.id.textEmpty)
         fab = findViewById(R.id.fabNewSession)
         headerTitle = findViewById(R.id.headerTitle)
-        headerLink = findViewById(R.id.headerLink)
         settingsLink = findViewById(R.id.settingsLink)
 
         ShizukuHelper.init()
@@ -62,7 +60,6 @@ class MainActivity : AppCompatActivity() {
             createNewSession(manager.resolveDefaultTemplate(this))
             true
         }
-        headerLink.setOnClickListener { startActivity(Intent(this, TemplatesActivity::class.java)) }
         settingsLink.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
 
         if (intent?.getBooleanExtra("auto_default", false) == true) {
@@ -74,7 +71,6 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         val color = TermSettings.color(this)
         headerTitle.setTextColor(color)
-        headerLink.setTextColor(color)
         settingsLink.setTextColor(color)
         updateList()
     }
