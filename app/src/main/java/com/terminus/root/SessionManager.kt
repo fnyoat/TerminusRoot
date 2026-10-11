@@ -65,17 +65,17 @@ class SessionManager(private val context: Context) {
             Template(
                 id = "builtin-root-shell",
                 name = context.getString(R.string.builtin_root_shell),
+                pathCwd = "/",
                 shell = shell,
                 useSu = true,
-                cwd = "/",
                 builtin = true
             ),
             Template(
                 id = "builtin-adb-shell",
                 name = context.getString(R.string.builtin_adb_shell),
+                pathCwd = "/",
                 shell = shell,
                 useShizuku = true,
-                cwd = "/",
                 builtin = true
             )
         )
