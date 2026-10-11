@@ -20,6 +20,10 @@ import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
 import java.io.File
 
+private const val TAG = "TerminalActivity"
+private val terminalSessions = HashMap<String, TerminalSession>()
+private var currentTerminal: TerminalActivity? = null
+
 class TerminalActivity : AppCompatActivity() {
     private lateinit var textOutput: TextView
     private lateinit var editCommand: EditText
@@ -65,11 +69,14 @@ class TerminalActivity : AppCompatActivity() {
         termView.setTextSize(TermSettings.fontSize(this))
 
         val launch = buildLaunchCommand()
-        val terminal = TerminalSession(
-            launch.first, launch.third, launch.second, BASE_ENV, 2000, sessionClient
-        )
+        val existing = terminalSessions[session.id]
+        val terminal = if (existing != null && existing.isRunning) existing else {
+            TerminalSession(launch.first, launch.third, launch.second, BASE_ENV, 2000, sessionClient)
+                .also { terminalSessions[session.id] = it }
+        }
         terminalSession = terminal
         termView.attachSession(terminal)
+        termView.onScreenUpdated()
         termView.requestFocus()
     }
 
@@ -219,105 +226,9 @@ class TerminalActivity : AppCompatActivity() {
         }
     }
 
-    private val sessionClient = object : TerminalSessionClient {
-        override fun onTextChanged(changedSession: TerminalSession?) {
-            termView.onScreenUpdated()
-        }
+    private val sessionClient = SessionClient
 
-        override fun onTitleChanged(changedSession: TerminalSession?) {}
-
-        override fun onSessionFinished(finishedSession: TerminalSession?) {
-            Log.i(TAG, "terminal session finished")
-        }
-
-        override fun onCopyTextToClipboard(session: TerminalSession?, text: String?) {
-            if (!text.isNullOrEmpty()) copyToClipboard(text)
-        }
-
-        override fun onPasteTextFromClipboard(session: TerminalSession?) {
-            val text = clipText()
-            text?.let { terminalSession?.write(it.toByteArray(), 0, it.length) }
-        }
-
-        override fun onBell(session: TerminalSession?) {}
-
-        override fun onColorsChanged(session: TerminalSession?) {}
-
-        override fun onTerminalCursorStateChange(state: Boolean) {}
-
-        override fun getTerminalCursorStyle(): Int? = null
-
-        override fun logError(tag: String, message: String) { Log.e(tag, message) }
-
-        override fun logWarn(tag: String, message: String) { Log.w(tag, message) }
-
-        override fun logInfo(tag: String, message: String) { Log.i(tag, message) }
-
-        override fun logDebug(tag: String, message: String) { Log.d(tag, message) }
-
-        override fun logVerbose(tag: String, message: String) { Log.v(tag, message) }
-
-        override fun logStackTraceWithMessage(tag: String, message: String, e: Exception) {
-            Log.e(tag, message, e)
-        }
-
-        override fun logStackTrace(tag: String, e: Exception) { Log.e(tag, "stacktrace", e) }
-    }
-
-    private val viewClient = object : TerminalViewClient {
-        override fun onScale(scale: Float): Float = scale
-
-        override fun onSingleTapUp(e: MotionEvent?) {
-            showKeyboard()
-        }
-
-        override fun shouldBackButtonBeMappedToEscape(): Boolean = false
-
-        override fun shouldEnforceCharBasedInput(): Boolean = false
-
-        override fun shouldUseCtrlSpaceWorkaround(): Boolean = false
-
-        override fun isTerminalViewSelected(): Boolean = true
-
-        override fun copyModeChanged(copyMode: Boolean) {}
-
-        override fun onKeyDown(keyCode: Int, e: KeyEvent?, session: TerminalSession?): Boolean = false
-
-        override fun onKeyUp(keyCode: Int, e: KeyEvent?): Boolean = false
-
-        override fun onLongPress(event: MotionEvent?): Boolean = false
-
-        override fun readControlKey(): Boolean = false
-
-        override fun readAltKey(): Boolean = false
-
-        override fun readShiftKey(): Boolean = false
-
-        override fun readFnKey(): Boolean = false
-
-        override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession?): Boolean = false
-
-        override fun onEmulatorSet() {
-            termView.requestFocus()
-            showKeyboard()
-        }
-
-        override fun logError(tag: String, message: String) { Log.e(tag, message) }
-
-        override fun logWarn(tag: String, message: String) { Log.w(tag, message) }
-
-        override fun logInfo(tag: String, message: String) { Log.i(tag, message) }
-
-        override fun logDebug(tag: String, message: String) { Log.d(tag, message) }
-
-        override fun logVerbose(tag: String, message: String) { Log.v(tag, message) }
-
-        override fun logStackTraceWithMessage(tag: String, message: String, e: Exception) {
-            Log.e(tag, message, e)
-        }
-
-        override fun logStackTrace(tag: String, e: Exception) { Log.e(tag, "stacktrace", e) }
-    }
+    private val viewClient = ViewClient
 
     private fun showKeyboard() {
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -333,11 +244,18 @@ class TerminalActivity : AppCompatActivity() {
         (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)?.primaryClip
             ?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()
 
+    override fun onResume() {
+        super.onResume()
+        currentTerminal = this
+        if (!session.useShizuku) termView.onScreenUpdated()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         ShizukuHelper.onPermissionResult = null
         ShizukuHelper.onBinderStateChanged = null
-        terminalSession?.finishIfRunning()
+        if (currentTerminal === this) currentTerminal = null
+        terminalSession?.let { if (!it.isRunning) terminalSessions.remove(session.id) }
         terminalSession = null
         executor?.stop()
     }
@@ -348,7 +266,6 @@ class TerminalActivity : AppCompatActivity() {
     private fun shQuote(path: String): String = "'" + path.replace("'", "'\\''") + "'"
 
     companion object {
-        private const val TAG = "TerminalActivity"
         private const val TERMINUS_BANNER = "=========================="
         private val BASE_ENV = arrayOf(
             "TERM=xterm-256color",
@@ -356,4 +273,104 @@ class TerminalActivity : AppCompatActivity() {
             "PATH=/sbin:/system/sbin:/system/bin:/system/xbin:/vendor/bin"
         )
     }
+}
+
+private object SessionClient : TerminalSessionClient {
+    override fun onTextChanged(changedSession: TerminalSession?) {
+        currentTerminal?.termView?.onScreenUpdated()
+    }
+
+    override fun onTitleChanged(changedSession: TerminalSession?) {}
+
+    override fun onSessionFinished(finishedSession: TerminalSession?) {
+        Log.i(TAG, "terminal session finished")
+    }
+
+    override fun onCopyTextToClipboard(session: TerminalSession?, text: String?) {
+        if (!text.isNullOrEmpty()) currentTerminal?.copyToClipboard(text)
+    }
+
+    override fun onPasteTextFromClipboard(session: TerminalSession?) {
+        currentTerminal?.let { act ->
+            act.clipText()?.let { txt -> session?.write(txt.toByteArray(), 0, txt.length) }
+        }
+    }
+
+    override fun onBell(session: TerminalSession?) {}
+
+    override fun onColorsChanged(session: TerminalSession?) {}
+
+    override fun onTerminalCursorStateChange(state: Boolean) {}
+
+    override fun getTerminalCursorStyle(): Int? = null
+
+    override fun logError(tag: String, message: String) { Log.e(tag, message) }
+
+    override fun logWarn(tag: String, message: String) { Log.w(tag, message) }
+
+    override fun logInfo(tag: String, message: String) { Log.i(tag, message) }
+
+    override fun logDebug(tag: String, message: String) { Log.d(tag, message) }
+
+    override fun logVerbose(tag: String, message: String) { Log.v(tag, message) }
+
+    override fun logStackTraceWithMessage(tag: String, message: String, e: Exception) {
+        Log.e(tag, message, e)
+    }
+
+    override fun logStackTrace(tag: String, e: Exception) { Log.e(tag, "stacktrace", e) }
+}
+
+private object ViewClient : TerminalViewClient {
+    override fun onScale(scale: Float): Float = scale
+
+    override fun onSingleTapUp(e: MotionEvent?) {
+        currentTerminal?.showKeyboard()
+    }
+
+    override fun shouldBackButtonBeMappedToEscape(): Boolean = false
+
+    override fun shouldEnforceCharBasedInput(): Boolean = false
+
+    override fun shouldUseCtrlSpaceWorkaround(): Boolean = false
+
+    override fun isTerminalViewSelected(): Boolean = true
+
+    override fun copyModeChanged(copyMode: Boolean) {}
+
+    override fun onKeyDown(keyCode: Int, e: KeyEvent?, session: TerminalSession?): Boolean = false
+
+    override fun onKeyUp(keyCode: Int, e: KeyEvent?): Boolean = false
+
+    override fun onLongPress(event: MotionEvent?): Boolean = false
+
+    override fun readControlKey(): Boolean = false
+
+    override fun readAltKey(): Boolean = false
+
+    override fun readShiftKey(): Boolean = false
+
+    override fun readFnKey(): Boolean = false
+
+    override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession?): Boolean = false
+
+    override fun onEmulatorSet() {
+        currentTerminal?.let { it.termView.requestFocus(); it.showKeyboard() }
+    }
+
+    override fun logError(tag: String, message: String) { Log.e(tag, message) }
+
+    override fun logWarn(tag: String, message: String) { Log.w(tag, message) }
+
+    override fun logInfo(tag: String, message: String) { Log.i(tag, message) }
+
+    override fun logDebug(tag: String, message: String) { Log.d(tag, message) }
+
+    override fun logVerbose(tag: String, message: String) { Log.v(tag, message) }
+
+    override fun logStackTraceWithMessage(tag: String, message: String, e: Exception) {
+        Log.e(tag, message, e)
+    }
+
+    override fun logStackTrace(tag: String, e: Exception) { Log.e(tag, "stacktrace", e) }
 }
