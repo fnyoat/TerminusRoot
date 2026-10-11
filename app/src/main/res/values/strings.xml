@@ -50,4 +50,7 @@
     <string name="no_permission">无权限</string>
     <string name="select_default_template">选择默认模板</string>
     <string name="select_color">选择终端颜色</string>
+    <string name="default_pwd">默认工作目录</string>
+    <string name="default_pwd_hint">输入绝对路径，留空使用系统默认</string>
+    <string name="pwd_system_default">系统默认</string>
 </resources>

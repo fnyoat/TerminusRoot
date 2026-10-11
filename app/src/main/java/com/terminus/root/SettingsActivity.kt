@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.View
+import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -14,6 +15,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var textColorSummary: TextView
     private lateinit var viewColorSwatch: View
     private lateinit var textFontSize: TextView
+    private lateinit var textDefaultPwd: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,6 +27,7 @@ class SettingsActivity : AppCompatActivity() {
         textColorSummary = findViewById(R.id.textColorSummary)
         viewColorSwatch = findViewById(R.id.viewColorSwatch)
         textFontSize = findViewById(R.id.textFontSize)
+        textDefaultPwd = findViewById(R.id.textDefaultPwd)
         findViewById<TextView>(R.id.headerTitle).setTextColor(TermSettings.color(this))
 
         findViewById<View>(R.id.rowTemplates).setOnClickListener {
@@ -33,6 +36,7 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<View>(R.id.rowDefaultTemplate).setOnClickListener { showDefaultTemplateDialog() }
         findViewById<View>(R.id.rowColor).setOnClickListener { showColorDialog() }
         findViewById<View>(R.id.rowFontSize).setOnClickListener { showFontSizeDialog() }
+        findViewById<View>(R.id.rowDefaultPwd).setOnClickListener { showDefaultPwdDialog() }
     }
 
     override fun onResume() {
@@ -47,6 +51,8 @@ class SettingsActivity : AppCompatActivity() {
         (viewColorSwatch.background as GradientDrawable).setColor(current)
         textDefaultTemplate.text = defaultTemplateSummary()
         textFontSize.text = getString(R.string.font_size_value, TermSettings.fontSize(this))
+        textDefaultPwd.text = TermSettings.defaultPwd(this)
+            .ifEmpty { getString(R.string.pwd_system_default) }
     }
 
     private fun defaultTemplateSummary(): String {
@@ -90,6 +96,22 @@ class SettingsActivity : AppCompatActivity() {
                 refresh()
             }
             .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showDefaultPwdDialog() {
+        val input = EditText(this)
+        input.setText(TermSettings.defaultPwd(this))
+        input.hint = getString(R.string.default_pwd_hint)
+        input.setTextColor(TermSettings.color(this))
+        AlertDialog.Builder(this)
+            .setTitle(R.string.default_pwd)
+            .setView(input)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                TermSettings.setDefaultPwd(this, input.text.toString().trim())
+                refresh()
+            }
             .show()
     }
 

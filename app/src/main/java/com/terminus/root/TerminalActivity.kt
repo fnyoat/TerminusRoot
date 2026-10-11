@@ -81,6 +81,7 @@ class TerminalActivity : AppCompatActivity() {
     }
 
     private fun buildLaunchCommand(): Triple<String, Array<String>, String> {
+        val effCwd = session.cwd.ifEmpty { TermSettings.defaultPwd(this) }
         val shell =
             if (session.chroot.isNullOrEmpty()) ShellLocator.resolve(session.shell) else session.shell
         if (session.useSu) {
@@ -96,8 +97,8 @@ class TerminalActivity : AppCompatActivity() {
                 suArgs += gid
             }
             val inner = mutableListOf<String>()
-            if (session.cwd.isNotEmpty() && session.cwd != "/") {
-                inner += "cd ${shQuote(session.cwd)} 2>/dev/null"
+            if (effCwd.isNotEmpty() && effCwd != "/") {
+                inner += "cd ${shQuote(effCwd)} 2>/dev/null"
             }
             if (session.chroot.isNullOrEmpty()) {
                 inner += shell
@@ -122,8 +123,8 @@ class TerminalActivity : AppCompatActivity() {
             argv += shell
         }
         argv += splitArgs(session.extraArgs)
-        val cwd = if (session.chroot.isNullOrEmpty() && session.cwd.isNotEmpty())
-            session.cwd.let { if (File(it).isDirectory) it else "/" } else "/"
+        val cwd = if (session.chroot.isNullOrEmpty() && effCwd.isNotEmpty())
+            effCwd.let { if (File(it).isDirectory) it else "/" } else "/"
         return Triple(argv[0], argv.toTypedArray(), cwd)
     }
 

@@ -9,6 +9,7 @@ object TermSettings {
     private const val KEY_COLOR = "term_color"
     private const val KEY_TEMPLATE = "default_template_id"
     private const val KEY_FONT_SIZE = "term_font_size"
+    private const val KEY_DEFAULT_PWD = "default_pwd"
 
     const val DEFAULT_TEMPLATE_AUTO = "auto"
 
@@ -49,5 +50,12 @@ object TermSettings {
 
     fun setFontSize(context: Context, size: Int) {
         prefs(context).edit { putInt(KEY_FONT_SIZE, size) }
+    }
+
+    fun defaultPwd(context: Context): String =
+        prefs(context).getString(KEY_DEFAULT_PWD, "") ?: ""
+
+    fun setDefaultPwd(context: Context, pwd: String) {
+        prefs(context).edit { putString(KEY_DEFAULT_PWD, pwd) }
     }
 }
