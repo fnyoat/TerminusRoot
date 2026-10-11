@@ -70,4 +70,9 @@
     <string name="cursor_block">方块</string>
     <string name="cursor_underline">下划线</string>
     <string name="cursor_bar">竖线</string>
+    <string name="detach">脱离会话</string>
+    <string name="detach_unavailable">当前设备不支持脱离</string>
+    <string name="detach_already">会话已在独立运行</string>
+    <string name="detach_failed">脱离失败</string>
+    <string name="detached">会话已脱离，将独立运行</string>
 </resources>

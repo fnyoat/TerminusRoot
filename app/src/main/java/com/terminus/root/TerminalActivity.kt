@@ -38,6 +38,7 @@ class TerminalActivity : AppCompatActivity() {
     private lateinit var layoutInput: View
     private var executor: TerminalExecutor? = null
     private lateinit var session: Session
+    private lateinit var manager: SessionManager
     private var terminalSession: TerminalSession? = null
     private var permissionFlowStarted = false
     private var terminalStarted = false
@@ -47,6 +48,7 @@ class TerminalActivity : AppCompatActivity() {
         setContentView(R.layout.activity_terminal)
 
         session = intent.getSerializableExtra("session") as Session
+        manager = SessionManager(this)
         InsetsUtil.apply(this)
 
         textOutput = findViewById(R.id.textOutput)
@@ -61,9 +63,13 @@ class TerminalActivity : AppCompatActivity() {
         val linkQuick = findViewById<ImageView>(R.id.linkQuick)
         linkQuick.imageTintList = ColorStateList.valueOf(color)
         linkQuick.setOnClickListener { showQuickDialog() }
+        val linkDetach = findViewById<ImageView>(R.id.linkDetach)
+        linkDetach.imageTintList = ColorStateList.valueOf(color)
+        linkDetach.setOnClickListener { detachSession() }
 
         if (session.useShizuku) {
             linkQuick.visibility = View.GONE
+            linkDetach.visibility = View.GONE
             setupShizukuMode(color)
         } else {
             setupTerminalMode(color)
@@ -78,12 +84,7 @@ class TerminalActivity : AppCompatActivity() {
         termView.setTerminalViewClient(viewClient)
         termView.setTextSize(TermSettings.fontSize(this))
 
-        val launch = buildLaunchCommand()
-        val existing = terminalSessions[session.id]
-        val terminal = if (existing != null && existing.isRunning) existing else {
-            TerminalSession(launch.first, launch.third, launch.second, buildEnv(), 2000, sessionClient)
-                .also { terminalSessions[session.id] = it }
-        }
+        val terminal = obtainSession()
         terminalSession = terminal
         termView.attachSession(terminal)
         applyTerminalColor(terminal)
@@ -91,6 +92,111 @@ class TerminalActivity : AppCompatActivity() {
         terminal.emulator?.setCursorStyle()
         termView.onScreenUpdated()
         termView.requestFocus()
+    }
+
+    private fun obtainSession(): TerminalSession {
+        val existing = terminalSessions[session.id]
+        if (existing != null && existing.isRunning) return existing
+        if (session.detached && TermBridge.isAlive(this, session.id)) {
+            val t = TerminalSession(
+                TermBridge.attachCommand(this, session.id),
+                "/",
+                arrayOf("TERM=xterm-256color"),
+                2000,
+                sessionClient
+            )
+            terminalSessions[session.id] = t
+            return t
+        }
+        if (session.detached) {
+            TermBridge.kill(this, session.id)
+            session.detached = false
+            manager.updateSession(session)
+        }
+        val launch = buildLaunchCommand()
+        val t = TerminalSession(launch.first, launch.third, launch.second, buildEnv(), 2000, sessionClient)
+        terminalSessions[session.id] = t
+        return t
+    }
+
+    private fun detachSession() {
+        if (!TermBridge.available(this)) {
+            toast(getString(R.string.detach_unavailable))
+            return
+        }
+        if (session.detached && TermBridge.isAlive(this, session.id)) {
+            toast(getString(R.string.detach_already))
+            return
+        }
+        val pid = terminalSession?.pid ?: -1
+        var cwd = session.cwd.ifEmpty { TermSettings.defaultPwd(this) }
+        val envMap = LinkedHashMap<String, String>()
+        for (e in buildEnv()) {
+            val i = e.indexOf('=')
+            if (i > 0) envMap[e.substring(0, i)] = e.substring(i + 1)
+        }
+        if (pid > 0) {
+            readProcCwd(pid)?.let { if (it.isNotEmpty()) { cwd = it; session.lastCwd = it } }
+            readProcEnv(pid)?.let { captured ->
+                if (captured.isNotEmpty()) {
+                    session.lastEnv = captured.joinToString("\n")
+                    for (e in captured) {
+                        val i = e.indexOf('=')
+                        if (i > 0) envMap[e.substring(0, i)] = e.substring(i + 1)
+                    }
+                }
+            }
+        }
+        envMap["TERM"] = "xterm-256color"
+
+        val launch = buildLaunchCommand()
+        val daemonCwd = if (session.useSu || !session.chroot.isNullOrEmpty()) "/" else cwd
+        val ok = TermBridge.launchDaemon(
+            this, session.id, launch.second, daemonCwd,
+            envMap.map { "${it.key}=${it.value}" }.toTypedArray()
+        )
+        if (!ok) {
+            toast(getString(R.string.detach_failed))
+            return
+        }
+        var alive = false
+        for (i in 0 until 25) {
+            if (TermBridge.isAlive(this, session.id)) {
+                alive = true
+                break
+            }
+            Thread.sleep(100)
+        }
+        if (!alive) {
+            toast(getString(R.string.detach_failed))
+            return
+        }
+        session.detached = true
+        manager.updateSession(session)
+        terminalSessions.remove(session.id)
+        terminalSession?.let { if (it.isRunning) it.finish() }
+        terminalSession = null
+        setupTerminalMode(TermSettings.color(this))
+        toast(getString(R.string.detached))
+    }
+
+    private fun readProcCwd(pid: Int): String? = try {
+        File("/proc/$pid/cwd").canonicalPath
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun readProcEnv(pid: Int): List<String>? = try {
+        File("/proc/$pid/environ").readBytes()
+            .toString(Charsets.UTF_8)
+            .split('\u0000')
+            .filter { it.contains('=') }
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun toast(text: String) {
+        android.widget.Toast.makeText(this, text, android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private fun applyTerminalColor(terminal: TerminalSession) {
@@ -155,7 +261,8 @@ class TerminalActivity : AppCompatActivity() {
     }
 
     private fun buildLaunchCommand(): Triple<String, Array<String>, String> {
-        val effCwd = session.cwd.ifEmpty { TermSettings.defaultPwd(this) }
+        val effCwd = session.lastCwd?.takeIf { it.isNotEmpty() }
+            ?: session.cwd.ifEmpty { TermSettings.defaultPwd(this) }
         val shell =
             if (session.chroot.isNullOrEmpty()) ShellLocator.resolve(session.shell) else session.shell
         if (session.useSu) {
@@ -325,6 +432,11 @@ class TerminalActivity : AppCompatActivity() {
         if (!session.useShizuku) termView.onScreenUpdated()
     }
 
+    override fun onPause() {
+        super.onPause()
+        snapshotShell()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         ShizukuHelper.onPermissionResult = null
@@ -336,17 +448,32 @@ class TerminalActivity : AppCompatActivity() {
     }
 
     private fun buildEnv(): Array<String> {
-        val env = mutableListOf(
-            "TERM=xterm-256color",
-            "HOME=/",
-            "PATH=/sbin:/system/sbin:/system/bin:/system/xbin:/vendor/bin",
-            "CLICOLOR=1",
-            "LS_COLORS=$LS_COLORS"
-        )
+        val map = LinkedHashMap<String, String>()
+        map["TERM"] = "xterm-256color"
+        map["HOME"] = "/"
+        map["PATH"] = "/sbin:/system/sbin:/system/bin:/system/xbin:/vendor/bin"
+        map["CLICOLOR"] = "1"
+        map["LS_COLORS"] = LS_COLORS
         if (session.chroot.isNullOrEmpty()) {
-            ensureShellRc()?.let { env += "ENV=$it" }
+            ensureShellRc()?.let { map["ENV"] = it }
         }
-        return env.toTypedArray()
+        if (!session.detached && !session.lastEnv.isNullOrBlank()) {
+            for (e in session.lastEnv!!.split('\n')) {
+                val i = e.indexOf('=')
+                if (i > 0) map[e.substring(0, i)] = e.substring(i + 1)
+            }
+        }
+        map["TERM"] = "xterm-256color"
+        return map.map { "${it.key}=${it.value}" }.toTypedArray()
+    }
+
+    private fun snapshotShell() {
+        if (session.useShizuku || session.detached) return
+        val pid = terminalSession?.pid ?: return
+        if (pid <= 0) return
+        readProcCwd(pid)?.let { if (it.isNotEmpty()) session.lastCwd = it }
+        readProcEnv(pid)?.let { if (it.isNotEmpty()) session.lastEnv = it.joinToString("\n") }
+        manager.updateSession(session)
     }
 
     private fun ensureShellRc(): String? = try {

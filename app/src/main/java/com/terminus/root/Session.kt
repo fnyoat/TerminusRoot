@@ -14,5 +14,8 @@ data class Session(
     var extraArgs: String = "",
     var uid: String = "",
     var gid: String = "",
-    var templateId: String? = null
+    var templateId: String? = null,
+    var detached: Boolean = false,
+    var lastCwd: String? = null,
+    var lastEnv: String? = null
 ) : Serializable

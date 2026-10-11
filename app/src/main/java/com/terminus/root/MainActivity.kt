@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
     private lateinit var recycler: RecyclerView
@@ -18,6 +19,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var settingsLink: TextView
     private lateinit var manager: SessionManager
     private lateinit var adapter: SessionAdapter
+    private val runningIds = mutableSetOf<String>()
+    private val probeExecutor = Executors.newSingleThreadExecutor()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,7 +52,8 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
             },
             onClose = { session -> closeSession(session) },
-            blocked = { session -> Access.sessionProfileBlocked(session) }
+            blocked = { session -> Access.sessionProfileBlocked(session) },
+            isRunning = { session -> runningIds.contains(session.id) }
         )
         
         recycler.layoutManager = LinearLayoutManager(this)
@@ -79,6 +83,17 @@ class MainActivity : AppCompatActivity() {
         val sessions = manager.getSessions()
         adapter.updateSessions(sessions)
         textEmpty.visibility = if (sessions.isEmpty()) TextView.VISIBLE else TextView.GONE
+        probeExecutor.execute {
+            val ids = mutableSetOf<String>()
+            for (s in sessions) {
+                if (s.detached && TermBridge.isAlive(this, s.id)) ids.add(s.id)
+            }
+            runOnUiThread {
+                runningIds.clear()
+                runningIds.addAll(ids)
+                adapter.notifyDataSetChanged()
+            }
+        }
     }
     
     private fun startDefaultSession() {
@@ -172,6 +187,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.close)
             .setMessage(R.string.close_session_confirm)
             .setPositiveButton(R.string.ok) { _, _ ->
+                if (session.detached) TermBridge.kill(this, session.id)
                 manager.removeSession(session)
                 updateList()
             }

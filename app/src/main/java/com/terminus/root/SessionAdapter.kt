@@ -14,7 +14,8 @@ class SessionAdapter(
     private val onRename: (Session) -> Unit,
     private val onDuplicate: (Session) -> Unit,
     private val onClose: (Session) -> Unit,
-    private val blocked: (Session) -> Boolean = { false }
+    private val blocked: (Session) -> Boolean = { false },
+    private val isRunning: (Session) -> Boolean = { false }
 ) : RecyclerView.Adapter<SessionAdapter.SessionViewHolder>() {
     
     class SessionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -46,6 +47,9 @@ class SessionAdapter(
             }
             if (session.cwd.isNotEmpty()) append(" | $session.cwd")
             if (!session.chroot.isNullOrEmpty()) append(" | chroot:$session.chroot")
+            if (session.detached) {
+                append(if (isRunning(session)) " | 运行中" else " | 已结束")
+            }
         }
         holder.textInfo.text = info
         val color = if (isBlocked) {

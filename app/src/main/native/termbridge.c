@@ -156,6 +156,14 @@ static int cmd_daemon(int argc, char **argv) {
     chmod(sock, 0600);
     listen(lfd, 4);
 
+    char pidpath[256];
+    snprintf(pidpath, sizeof(pidpath), "%s.pid", sock);
+    FILE *pf = fopen(pidpath, "w");
+    if (pf) {
+        fprintf(pf, "%d\n", (int) getpid());
+        fclose(pf);
+    }
+
     int cfd = -1;
     unsigned char obuf[MAX_PAYLOAD];
     unsigned char ibuf[IBUF_CAP];
@@ -194,6 +202,7 @@ static int cmd_daemon(int argc, char **argv) {
                 close(master);
                 close(lfd);
                 unlink(sock);
+                unlink(pidpath);
                 return 0;
             }
         }
@@ -254,6 +263,7 @@ static int cmd_daemon(int argc, char **argv) {
     close(master);
     close(lfd);
     unlink(sock);
+    unlink(pidpath);
     return 0;
 }
 
@@ -306,7 +316,7 @@ static int cmd_attach(int argc, char **argv) {
             if (errno == EINTR) continue;
             break;
         }
-        if (pfd[0].revents & POLLIN) {
+        if (pfd[0].revents & (POLLIN | POLLHUP | POLLERR)) {
             ssize_t k = read(STDIN_FILENO, buf + 5, sizeof(buf) - 5);
             if (k > 0) {
                 buf[0] = FRAME_DATA;
@@ -316,6 +326,8 @@ static int cmd_attach(int argc, char **argv) {
                 buf[4] = (unsigned char) ((k >> 24) & 0xff);
                 if (write_all(s, buf, (size_t) k + 5) < 0) break;
             } else if (k == 0) {
+                break;
+            } else if (errno != EINTR && errno != EAGAIN) {
                 break;
             }
         }
@@ -342,6 +354,27 @@ static int cmd_probe(int argc, char **argv) {
     return 0;
 }
 
+static int cmd_kill(int argc, char **argv) {
+    if (argc < 3) return 2;
+    const char *sock = argv[2];
+    char pidpath[256];
+    snprintf(pidpath, sizeof(pidpath), "%s.pid", sock);
+    int pid = 0;
+    FILE *f = fopen(pidpath, "r");
+    if (f) {
+        if (fscanf(f, "%d", &pid) != 1) pid = 0;
+        fclose(f);
+    }
+    if (pid > 0) {
+        kill(pid, SIGTERM);
+        usleep(200000);
+        kill(pid, SIGKILL);
+    }
+    unlink(sock);
+    unlink(pidpath);
+    return 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         fprintf(stderr, "usage: termbridge <daemon|attach|probe> ...\n");
@@ -350,6 +383,7 @@ int main(int argc, char **argv) {
     if (strcmp(argv[1], "daemon") == 0) return cmd_daemon(argc, argv);
     if (strcmp(argv[1], "attach") == 0) return cmd_attach(argc, argv);
     if (strcmp(argv[1], "probe") == 0) return cmd_probe(argc, argv);
+    if (strcmp(argv[1], "kill") == 0) return cmd_kill(argc, argv);
     fprintf(stderr, "unknown mode: %s\n", argv[1]);
     return 2;
 }
