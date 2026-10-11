@@ -93,8 +93,8 @@ class MainActivity : AppCompatActivity() {
                     shell = editShell.text.toString().ifEmpty { ShellLocator.findShell() },
                     useSu = checkSu.isChecked,
                     useShizuku = checkShizuku.isChecked,
-                    uid = editUid.text.toString().trim().takeIf { it.isNotEmpty() },
-                    gid = editGid.text.toString().trim().takeIf { it.isNotEmpty() },
+                    uid = editUid.text.toString().trim().takeIf { it.isNotEmpty() }.orEmpty(),
+                    gid = editGid.text.toString().trim().takeIf { it.isNotEmpty() }.orEmpty(),
                     extraArgs = editExtra.text.toString()
                 )
                 manager.addSession(session)

@@ -88,22 +88,22 @@ class TemplatesActivity : AppCompatActivity() {
                 val newTemplate = template?.copy(
                     name = editName.text.toString().ifEmpty { "模板" },
                     pathCwd = editPath.text.toString().ifEmpty { "/" },
-                    chrootView = editChroot.text.toString().takeIf { it.isNotEmpty() },
+                    chrootView = editChroot.text.toString().takeIf { it.isNotEmpty() }.orEmpty(),
                     shell = editShell.text.toString().ifEmpty { ShellLocator.findShell() },
                     useSu = checkSu.isChecked,
                     useShizuku = checkShizuku.isChecked,
-                    uid = editUid.text.toString().trim().takeIf { it.isNotEmpty() },
-                    gid = editGid.text.toString().trim().takeIf { it.isNotEmpty() },
+                    uid = editUid.text.toString().trim().takeIf { it.isNotEmpty() }.orEmpty(),
+                    gid = editGid.text.toString().trim().takeIf { it.isNotEmpty() }.orEmpty(),
                     extraArgs = editExtra.text.toString()
                 ) ?: Template(
                     name = editName.text.toString().ifEmpty { "模板" },
                     pathCwd = editPath.text.toString().ifEmpty { "/" },
-                    chrootView = editChroot.text.toString().takeIf { it.isNotEmpty() },
+                    chrootView = editChroot.text.toString().takeIf { it.isNotEmpty() }.orEmpty(),
                     shell = editShell.text.toString().ifEmpty { ShellLocator.findShell() },
                     useSu = checkSu.isChecked,
                     useShizuku = checkShizuku.isChecked,
-                    uid = editUid.text.toString().trim().takeIf { it.isNotEmpty() },
-                    gid = editGid.text.toString().trim().takeIf { it.isNotEmpty() },
+                    uid = editUid.text.toString().trim().takeIf { it.isNotEmpty() }.orEmpty(),
+                    gid = editGid.text.toString().trim().takeIf { it.isNotEmpty() }.orEmpty(),
                     extraArgs = editExtra.text.toString()
                 )
                 if (template == null) {
