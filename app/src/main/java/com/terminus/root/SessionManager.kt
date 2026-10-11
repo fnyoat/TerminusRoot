@@ -5,7 +5,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.File
 
-class SessionManager(context: Context) {
+class SessionManager(private val context: Context) {
     private val gson = Gson()
     private val file = File(context.filesDir, "sessions.json")
     private val templateFile = File(context.filesDir, "templates.json")
@@ -57,7 +57,29 @@ class SessionManager(context: Context) {
     }
     
     fun getSessions(): List<Session> = sessions.toList()
-    fun getTemplates(): List<Template> = templates.toList()
+    fun getTemplates(): List<Template> = buildBuiltInTemplates() + templates
+
+    private fun buildBuiltInTemplates(): List<Template> {
+        val shell = ShellLocator.findShell()
+        return listOf(
+            Template(
+                id = "builtin-root-shell",
+                name = context.getString(R.string.builtin_root_shell),
+                shell = shell,
+                useSu = true,
+                cwd = "/",
+                builtin = true
+            ),
+            Template(
+                id = "builtin-adb-shell",
+                name = context.getString(R.string.builtin_adb_shell),
+                shell = shell,
+                useShizuku = true,
+                cwd = "/",
+                builtin = true
+            )
+        )
+    }
     
     fun addSession(session: Session) {
         sessions.add(session)

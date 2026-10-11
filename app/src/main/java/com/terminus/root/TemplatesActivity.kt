@@ -30,13 +30,19 @@ class TemplatesActivity : AppCompatActivity() {
             mutableListOf(),
             onUse = { template -> useTemplate(template) },
             onEdit = { template -> editTemplate(template) },
-            onDelete = { template -> deleteTemplate(template) }
+            onDelete = { template -> deleteTemplate(template) },
+            available = { template -> Access.templateAvailable(template) }
         )
         
         recycler.layoutManager = LinearLayoutManager(this)
         recycler.adapter = adapter
         
         fab.setOnClickListener { showTemplateDialog(null) }
+        updateList()
+    }
+
+    override fun onResume() {
+        super.onResume()
         updateList()
     }
     

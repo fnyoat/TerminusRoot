@@ -12,5 +12,6 @@ data class Template(
     var shell: String = "/system/bin/sh",
     var useSu: Boolean = false,
     var useShizuku: Boolean = false,
-    var extraArgs: String = ""
+    var extraArgs: String = "",
+    var builtin: Boolean = false
 ) : Serializable

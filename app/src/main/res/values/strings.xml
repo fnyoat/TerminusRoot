@@ -36,4 +36,6 @@
     <string name="edit_template">编辑模板</string>
     <string name="delete_template">删除模板</string>
     <string name="empty_templates">暂无模板</string>
+    <string name="builtin_root_shell">Root Shell（su）</string>
+    <string name="builtin_adb_shell">ADB-Priv Shell（Shizuku）</string>
 </resources>

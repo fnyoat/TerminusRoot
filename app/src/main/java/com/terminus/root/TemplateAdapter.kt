@@ -12,23 +12,25 @@ class TemplateAdapter(
     private val templates: MutableList<Template>,
     private val onUse: (Template) -> Unit,
     private val onEdit: (Template) -> Unit,
-    private val onDelete: (Template) -> Unit
+    private val onDelete: (Template) -> Unit,
+    private val available: (Template) -> Boolean = { true }
 ) : RecyclerView.Adapter<TemplateAdapter.TemplateViewHolder>() {
-    
+
     class TemplateViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val textName: TextView = view.findViewById(R.id.textTemplateName)
         val textInfo: TextView = view.findViewById(R.id.textTemplateInfo)
         val buttonMenu: ImageButton = view.findViewById(R.id.buttonMenu)
     }
-    
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TemplateViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_template, parent, false)
         return TemplateViewHolder(view)
     }
-    
+
     override fun onBindViewHolder(holder: TemplateViewHolder, position: Int) {
         val template = templates[position]
+        val accessible = available(template)
         holder.textName.text = template.name
         val info = buildString {
             append("GUID:${template.guid}")
@@ -43,13 +45,20 @@ class TemplateAdapter(
             )
         }
         holder.textInfo.text = info
+        holder.itemView.alpha = if (accessible) 1f else 0.4f
+        holder.itemView.isEnabled = accessible
         holder.buttonMenu.setOnClickListener {
             val popup = PopupMenu(holder.itemView.context, holder.buttonMenu)
             popup.menuInflater.inflate(R.menu.template_menu, popup.menu)
+            popup.menu.findItem(R.id.menu_use_template).isEnabled = accessible
+            if (template.builtin) {
+                popup.menu.findItem(R.id.menu_edit_template).isVisible = false
+                popup.menu.findItem(R.id.menu_delete_template).isVisible = false
+            }
             popup.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     R.id.menu_use_template -> {
-                        onUse(template)
+                        if (accessible) onUse(template)
                         true
                     }
                     R.id.menu_edit_template -> {
@@ -66,9 +75,9 @@ class TemplateAdapter(
             popup.show()
         }
     }
-    
+
     override fun getItemCount() = templates.size
-    
+
     fun updateTemplates(newTemplates: List<Template>) {
         templates.clear()
         templates.addAll(newTemplates)
