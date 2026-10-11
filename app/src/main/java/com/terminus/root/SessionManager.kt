@@ -95,7 +95,7 @@ class SessionManager(private val context: Context) {
             Template(
                 id = "builtin-app-uid",
                 name = context.getString(R.string.builtin_app_uid),
-                pathCwd = "/",
+                pathCwd = "/storage/emulated/0",
                 shell = shell,
                 uid = appId,
                 gid = appId,

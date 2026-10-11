@@ -1,13 +1,21 @@
 package com.terminus.root
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class SettingsActivity : AppCompatActivity() {
     private lateinit var manager: SessionManager
@@ -16,6 +24,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var viewColorSwatch: View
     private lateinit var textFontSize: TextView
     private lateinit var textDefaultPwd: TextView
+    private lateinit var textAllFiles: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +37,7 @@ class SettingsActivity : AppCompatActivity() {
         viewColorSwatch = findViewById(R.id.viewColorSwatch)
         textFontSize = findViewById(R.id.textFontSize)
         textDefaultPwd = findViewById(R.id.textDefaultPwd)
+        textAllFiles = findViewById(R.id.textAllFiles)
         findViewById<TextView>(R.id.headerTitle).setTextColor(TermSettings.color(this))
 
         findViewById<View>(R.id.rowTemplates).setOnClickListener {
@@ -37,6 +47,7 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<View>(R.id.rowColor).setOnClickListener { showColorDialog() }
         findViewById<View>(R.id.rowFontSize).setOnClickListener { showFontSizeDialog() }
         findViewById<View>(R.id.rowDefaultPwd).setOnClickListener { showDefaultPwdDialog() }
+        findViewById<View>(R.id.rowAllFiles).setOnClickListener { requestAllFilesAccess() }
     }
 
     override fun onResume() {
@@ -53,6 +64,40 @@ class SettingsActivity : AppCompatActivity() {
         textFontSize.text = getString(R.string.font_size_value, TermSettings.fontSize(this))
         textDefaultPwd.text = TermSettings.defaultPwd(this)
             .ifEmpty { getString(R.string.pwd_system_default) }
+        textAllFiles.text = getString(
+            if (hasAllFilesAccess()) R.string.all_files_granted else R.string.all_files_denied
+        )
+    }
+
+    private fun hasAllFilesAccess(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+                PackageManager.PERMISSION_GRANTED
+        }
+
+    private fun requestAllFilesAccess() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) return
+            try {
+                startActivity(
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                        .setData(Uri.parse("package:$packageName"))
+                )
+            } catch (e: Exception) {
+                startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            }
+        } else {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ),
+                REQ_STORAGE
+            )
+        }
     }
 
     private fun defaultTemplateSummary(): String {
@@ -129,5 +174,18 @@ class SettingsActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_STORAGE) refresh()
+    }
+
+    companion object {
+        private const val REQ_STORAGE = 1001
     }
 }

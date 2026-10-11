@@ -53,7 +53,7 @@ object TermSettings {
     }
 
     fun defaultPwd(context: Context): String =
-        prefs(context).getString(KEY_DEFAULT_PWD, "") ?: ""
+        prefs(context).getString(KEY_DEFAULT_PWD, "/") ?: "/"
 
     fun setDefaultPwd(context: Context, pwd: String) {
         prefs(context).edit { putString(KEY_DEFAULT_PWD, pwd) }

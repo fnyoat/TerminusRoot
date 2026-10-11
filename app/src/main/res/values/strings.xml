@@ -53,4 +53,7 @@
     <string name="default_pwd">默认工作目录</string>
     <string name="default_pwd_hint">输入绝对路径，留空使用系统默认</string>
     <string name="pwd_system_default">系统默认</string>
+    <string name="all_files_access">所有文件访问</string>
+    <string name="all_files_granted">已授权</string>
+    <string name="all_files_denied">未授权，点击授权</string>
 </resources>
