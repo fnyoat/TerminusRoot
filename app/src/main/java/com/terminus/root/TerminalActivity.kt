@@ -3,6 +3,7 @@ package com.terminus.root
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
@@ -11,6 +12,7 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
@@ -55,8 +57,8 @@ class TerminalActivity : AppCompatActivity() {
         headerTitle.text = session.name
         val color = TermSettings.color(this)
         headerTitle.setTextColor(color)
-        val linkQuick = findViewById<TextView>(R.id.linkQuick)
-        linkQuick.setTextColor(color)
+        val linkQuick = findViewById<ImageView>(R.id.linkQuick)
+        linkQuick.imageTintList = ColorStateList.valueOf(color)
         linkQuick.setOnClickListener { showQuickDialog() }
 
         if (session.useShizuku) {
@@ -110,7 +112,7 @@ class TerminalActivity : AppCompatActivity() {
             .setItems(items.toTypedArray()) { _, which ->
                 when {
                     which < entries.size -> runQuickEntry(entries[which])
-                    else -> showQuickAddDialog()
+                    else -> QuickCollection.showAddDialog(this) { showQuickDialog() }
                 }
             }
             .setNegativeButton(R.string.close, null)
@@ -126,29 +128,6 @@ class TerminalActivity : AppCompatActivity() {
             }
         }
         dialog.show()
-    }
-
-    private fun showQuickAddDialog() {
-        val view = layoutInflater.inflate(R.layout.dialog_quick, null)
-        val editName = view.findViewById<EditText>(R.id.editQuickName)
-        val editValue = view.findViewById<EditText>(R.id.editQuickValue)
-        val checkDir = view.findViewById<android.widget.CheckBox>(R.id.checkQuickDir)
-        AlertDialog.Builder(this)
-            .setTitle(R.string.quick_add)
-            .setView(view)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.ok) { _, _ ->
-                val value = editValue.text.toString().trim()
-                if (value.isEmpty()) return@setPositiveButton
-                val entry = TermSettings.QuickEntry(
-                    editName.text.toString().trim(),
-                    value,
-                    checkDir.isChecked
-                )
-                TermSettings.setQuickEntries(this, TermSettings.quickEntries(this) + entry)
-                showQuickDialog()
-            }
-            .show()
     }
 
     private fun confirmDeleteQuick(entries: MutableList<TermSettings.QuickEntry>, index: Int) {

@@ -56,7 +56,7 @@
     <string name="all_files_access">所有文件访问</string>
     <string name="all_files_granted">已授权</string>
     <string name="all_files_denied">未授权，点击授权</string>
-    <string name="quick_collection">快捷收藏</string>
+    <string name="quick_collection">收藏</string>
     <string name="quick_add">＋ 添加</string>
     <string name="quick_name">名称（可选）</string>
     <string name="quick_value">路径或命令</string>

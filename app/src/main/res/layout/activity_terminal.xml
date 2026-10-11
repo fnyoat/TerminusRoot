@@ -12,17 +12,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
+    <ImageView
         android:id="@+id/linkQuick"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="?attr/selectableItemBackground"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/quick_collection"
-        android:paddingStart="12dp"
-        android:paddingEnd="16dp"
-        android:text="@string/quick_collection"
-        android:textColor="@color/terminal_text"
-        android:textSize="16sp"
+        android:padding="12dp"
+        android:src="@drawable/ic_star"
         app:layout_constraintBottom_toBottomOf="@id/headerTitle"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/headerTitle" />

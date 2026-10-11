@@ -25,6 +25,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var textFontSize: TextView
     private lateinit var textDefaultPwd: TextView
     private lateinit var textAllFiles: TextView
+    private lateinit var textQuickCount: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +39,7 @@ class SettingsActivity : AppCompatActivity() {
         textFontSize = findViewById(R.id.textFontSize)
         textDefaultPwd = findViewById(R.id.textDefaultPwd)
         textAllFiles = findViewById(R.id.textAllFiles)
+        textQuickCount = findViewById(R.id.textQuickCount)
         findViewById<TextView>(R.id.headerTitle).setTextColor(TermSettings.color(this))
 
         findViewById<View>(R.id.rowTemplates).setOnClickListener {
@@ -48,6 +50,7 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<View>(R.id.rowFontSize).setOnClickListener { showFontSizeDialog() }
         findViewById<View>(R.id.rowDefaultPwd).setOnClickListener { showDefaultPwdDialog() }
         findViewById<View>(R.id.rowAllFiles).setOnClickListener { requestAllFilesAccess() }
+        findViewById<View>(R.id.rowQuick).setOnClickListener { QuickCollection.showManager(this) }
     }
 
     override fun onResume() {
@@ -67,6 +70,7 @@ class SettingsActivity : AppCompatActivity() {
         textAllFiles.text = getString(
             if (hasAllFilesAccess()) R.string.all_files_granted else R.string.all_files_denied
         )
+        textQuickCount.text = TermSettings.quickEntries(this).size.toString()
     }
 
     private fun hasAllFilesAccess(): Boolean =
