@@ -14,6 +14,9 @@ object Access {
         "/su/bin/su"
     )
 
+    fun appUid(): Int = android.os.Process.myUid()
+    fun appGid(): Int = android.os.Process.myUid()
+
     fun suAvailable(): Boolean {
         if (SU_PATHS.any { File(it).exists() }) return true
         if (testCommand("which", "su")) return true
@@ -26,8 +29,15 @@ object Access {
         false
     }
 
-    fun needsProfile(uid: String, gid: String): Boolean =
-        (uid.isNotBlank() && uid.trim() != "0") || gid.isNotBlank()
+    fun needsProfile(uid: String, gid: String): Boolean {
+        val uidT = uid.trim()
+        val gidT = gid.trim()
+        val uidOk = uidT.isBlank() ||
+            (uidT.toIntOrNull()?.let { it == 0 || it == appUid() } == true)
+        val gidOk = gidT.isBlank() ||
+            (gidT.toIntOrNull()?.let { it == 0 || it == appGid() } == true)
+        return !(uidOk && gidOk)
+    }
 
     fun canUseProfile(uid: String, gid: String): Boolean =
         !needsProfile(uid, gid) || suAvailable()

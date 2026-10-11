@@ -74,6 +74,7 @@ class SessionManager(private val context: Context) {
 
     private fun buildBuiltInTemplates(): List<Template> {
         val shell = ShellLocator.findShell()
+        val appId = Access.appUid().toString()
         return listOf(
             Template(
                 id = "builtin-root-shell",
@@ -89,6 +90,15 @@ class SessionManager(private val context: Context) {
                 pathCwd = "/",
                 shell = shell,
                 useShizuku = true,
+                builtin = true
+            ),
+            Template(
+                id = "builtin-app-uid",
+                name = context.getString(R.string.builtin_app_uid),
+                pathCwd = "/",
+                shell = shell,
+                uid = appId,
+                gid = appId,
                 builtin = true
             )
         )
