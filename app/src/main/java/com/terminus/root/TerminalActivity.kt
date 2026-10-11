@@ -15,6 +15,7 @@ class TerminalActivity : AppCompatActivity() {
     private lateinit var executor: TerminalExecutor
     private lateinit var session: Session
     private var permissionFlowStarted = false
+    private var terminalStarted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,13 +41,13 @@ class TerminalActivity : AppCompatActivity() {
         }
         ShizukuHelper.onBinderStateChanged = { available ->
             runOnUiThread {
-                if (available && session.useShizuku && !executor.isRunning()) {
+                if (available && session.useShizuku && !terminalStarted) {
                     ensureShizukuReady()
                 }
             }
         }
 
-        executor = TerminalExecutor(session)
+        executor = TerminalExecutor(this, session)
         executor.onOutput = { output -> append(output) }
         executor.onError = { error -> append(error) }
 
@@ -93,6 +94,8 @@ class TerminalActivity : AppCompatActivity() {
     }
 
     private fun startExecutor() {
+        if (terminalStarted) return
+        terminalStarted = true
         executor.start()
     }
 

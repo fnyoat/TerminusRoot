@@ -1,25 +1,30 @@
 package com.terminus.root
 
+import android.content.Context
 import android.util.Log
 import java.io.BufferedReader
 import java.io.DataOutputStream
 import java.io.File
 import java.io.InputStreamReader
 import java.util.concurrent.atomic.AtomicBoolean
-import rikka.shizuku.Shizuku
 
-class TerminalExecutor(private val session: Session) {
+class TerminalExecutor(private val context: Context, private val session: Session) {
     private var process: Process? = null
     private var outputStream: DataOutputStream? = null
     private val isRunning = AtomicBoolean(false)
+    private var shizukuTerminal: ShizukuTerminal? = null
     var onOutput: ((String) -> Unit)? = null
     var onError: ((String) -> Unit)? = null
 
     fun start() {
+        if (session.useShizuku) {
+            startShizuku()
+            return
+        }
         if (isRunning.get()) return
         val proc: Process
         try {
-            proc = createProcess()
+            proc = createLocalProcess()
         } catch (e: Exception) {
             onError?.invoke("启动终端失败: ${e.message}\n")
             return
@@ -31,25 +36,29 @@ class TerminalExecutor(private val session: Session) {
         postStart()
     }
 
-    private fun createProcess(): Process {
-        return when {
-            session.useShizuku -> createShizukuProcess()
-            session.useSu -> {
-                if (!isSuAvailable()) {
-                    onError?.invoke("未找到 su 命令，已回退为普通 Shell\n")
-                    createDirectProcess()
-                } else {
-                    val pb = ProcessBuilder("su")
-                    pb.environment()["TERM"] = "xterm-256color"
-                    pb.redirectErrorStream(true)
-                    pb.start()
-                }
-            }
-            else -> createDirectProcess()
-        }
+    private fun startShizuku() {
+        if (shizukuTerminal != null) return
+        val terminal = ShizukuTerminal(
+            context,
+            session,
+            onOutput = { output -> onOutput?.invoke(output) },
+            onError = { error -> onError?.invoke(error) }
+        )
+        shizukuTerminal = terminal
+        terminal.start()
     }
 
-    private fun createDirectProcess(): Process {
+    private fun createLocalProcess(): Process {
+        if (session.useSu) {
+            if (!isSuAvailable()) {
+                onError?.invoke("未找到 su 命令，已回退为普通 Shell\n")
+            } else {
+                val pb = ProcessBuilder("su")
+                pb.environment()["TERM"] = "xterm-256color"
+                pb.redirectErrorStream(true)
+                return pb.start()
+            }
+        }
         val cmd = mutableListOf(session.shell)
         cmd.addAll(splitArgs(session.extraArgs))
         if (!session.chroot.isNullOrEmpty()) {
@@ -61,29 +70,6 @@ class TerminalExecutor(private val session: Session) {
         pb.environment()["TERM"] = "xterm-256color"
         pb.redirectErrorStream(true)
         return pb.start()
-    }
-
-    private fun createShizukuProcess(): Process {
-        if (!ShizukuHelper.isAvailable()) {
-            throw IllegalStateException("Shizuku 未运行，请先启动 Shizuku")
-        }
-        if (!ShizukuHelper.hasPermission()) {
-            throw SecurityException("未授予 Shizuku 权限")
-        }
-        val cmd = mutableListOf<String>()
-        if (!session.chroot.isNullOrEmpty()) {
-            cmd.add("chroot")
-            cmd.add(session.chroot!!)
-        }
-        cmd.add(session.shell)
-        cmd.addAll(splitArgs(session.extraArgs))
-        val env = arrayOf(
-            "TERM=xterm-256color",
-            "HOME=/",
-            "PATH=/sbin:/system/sbin:/system/bin:/system/xbin"
-        )
-        val dir = session.cwd.takeIf { it.isNotEmpty() }
-        return Shizuku.newProcess(cmd.toTypedArray(), env, dir)
     }
 
     private fun applyDirectory(pb: ProcessBuilder) {
@@ -116,7 +102,7 @@ class TerminalExecutor(private val session: Session) {
                     }
                 }
             } catch (e: Exception) {
-                Log.e("TerminalExecutor", "Error reading output", e)
+                Log.e(TAG, "Error reading output", e)
             }
         }.start()
     }
@@ -130,16 +116,23 @@ class TerminalExecutor(private val session: Session) {
     }
 
     fun execute(command: String) {
+        val shizuku = shizukuTerminal
+        if (shizuku != null) {
+            shizuku.execute(command)
+            return
+        }
         if (!isRunning.get() || outputStream == null) return
         try {
             outputStream!!.writeBytes("$command\n")
             outputStream!!.flush()
         } catch (e: Exception) {
-            Log.e("TerminalExecutor", "Error executing command", e)
+            Log.e(TAG, "Error executing command", e)
         }
     }
 
     fun stop() {
+        shizukuTerminal?.stop()
+        shizukuTerminal = null
         isRunning.set(false)
         try {
             outputStream?.writeBytes("exit\n")
@@ -150,11 +143,15 @@ class TerminalExecutor(private val session: Session) {
         outputStream?.close()
     }
 
-    fun isRunning(): Boolean = isRunning.get()
+    fun isRunning(): Boolean = isRunning.get() || shizukuTerminal?.isRunning() == true
 
     private fun splitArgs(args: String): List<String> =
         args.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
 
     private fun escapePath(path: String): String =
         path.replace("\\", "\\\\").replace(" ", "\\ ")
+
+    companion object {
+        private const val TAG = "TerminalExecutor"
+    }
 }
