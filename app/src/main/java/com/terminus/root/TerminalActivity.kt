@@ -225,7 +225,7 @@ class TerminalActivity : AppCompatActivity() {
         override fun onTitleChanged(changedSession: TerminalSession?) {}
 
         override fun onSessionFinished(finishedSession: TerminalSession?) {
-            runOnUiThread { finish() }
+            Log.i(TAG, "terminal session finished")
         }
 
         override fun onCopyTextToClipboard(session: TerminalSession?, text: String?) {

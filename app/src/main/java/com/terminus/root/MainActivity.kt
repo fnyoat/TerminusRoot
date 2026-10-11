@@ -19,12 +19,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var settingsLink: TextView
     private lateinit var manager: SessionManager
     private lateinit var adapter: SessionAdapter
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         InsetsUtil.apply(this)
-        
+
         manager = SessionManager(this)
         recycler = findViewById(R.id.recyclerSessions)
         textEmpty = findViewById(R.id.textEmpty)
@@ -64,6 +64,10 @@ class MainActivity : AppCompatActivity() {
         }
         headerLink.setOnClickListener { startActivity(Intent(this, TemplatesActivity::class.java)) }
         settingsLink.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
+
+        if (intent?.getBooleanExtra("auto_default", false) == true) {
+            startDefaultSession()
+        }
     }
     
     override fun onResume() {
