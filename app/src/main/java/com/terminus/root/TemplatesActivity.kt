@@ -13,6 +13,7 @@ class TemplatesActivity : AppCompatActivity() {
     private lateinit var recycler: RecyclerView
     private lateinit var textEmpty: TextView
     private lateinit var fab: FloatingActionButton
+    private lateinit var headerTitle: TextView
     private lateinit var manager: SessionManager
     private lateinit var adapter: TemplateAdapter
     
@@ -25,6 +26,7 @@ class TemplatesActivity : AppCompatActivity() {
         recycler = findViewById(R.id.recyclerTemplates)
         textEmpty = findViewById(R.id.textEmptyTemplates)
         fab = findViewById(R.id.fabNewTemplate)
+        headerTitle = findViewById(R.id.headerTitle)
         
         adapter = TemplateAdapter(
             mutableListOf(),
@@ -44,6 +46,7 @@ class TemplatesActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        headerTitle.setTextColor(TermSettings.color(this))
         updateList()
     }
     

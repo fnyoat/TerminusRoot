@@ -49,12 +49,18 @@ class TemplateAdapter(
             )
         }
         holder.textInfo.text = info
-        val textColor = holder.textName.context.getColor(
-            if (isBlocked) R.color.terminal_red else R.color.terminal_text
-        )
+        if (!accessible) {
+            holder.textInfo.text = "$info | 无权限"
+        }
+        val context = holder.textName.context
+        val textColor = if (isBlocked) {
+            context.getColor(R.color.terminal_red)
+        } else {
+            TermSettings.color(context)
+        }
         holder.textName.setTextColor(textColor)
         holder.textInfo.setTextColor(textColor)
-        holder.itemView.alpha = if (accessible) 1f else 0.4f
+        holder.itemView.alpha = if (isBlocked || accessible) 1f else 0.4f
         holder.itemView.isEnabled = accessible
         holder.buttonMenu.setOnClickListener {
             val popup = PopupMenu(holder.itemView.context, holder.buttonMenu)

@@ -27,7 +27,13 @@ setContentView(R.layout.activity_terminal)
         textOutput = findViewById(R.id.textOutput)
         editCommand = findViewById(R.id.editCommand)
         scrollView = findViewById(R.id.scrollView)
-        findViewById<TextView>(R.id.headerTitle).text = session.name
+        val headerTitle = findViewById<TextView>(R.id.headerTitle)
+        headerTitle.text = session.name
+        val color = TermSettings.color(this)
+        headerTitle.setTextColor(color)
+        textOutput.setTextColor(color)
+        editCommand.setTextColor(color)
+        editCommand.setHintTextColor(color and 0x66FFFFFF)
 
         ShizukuHelper.init()
         ShizukuHelper.onPermissionResult = { granted ->

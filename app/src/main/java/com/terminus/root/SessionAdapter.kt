@@ -48,16 +48,13 @@ class SessionAdapter(
             if (!session.chroot.isNullOrEmpty()) append(" | chroot:$session.chroot")
         }
         holder.textInfo.text = info
-        holder.textName.setTextColor(
-            holder.textName.context.getColor(
-                if (isBlocked) R.color.terminal_red else R.color.terminal_text
-            )
-        )
-        holder.textInfo.setTextColor(
-            holder.textInfo.context.getColor(
-                if (isBlocked) R.color.terminal_red else R.color.terminal_text
-            )
-        )
+        val color = if (isBlocked) {
+            holder.textName.context.getColor(R.color.terminal_red)
+        } else {
+            TermSettings.color(holder.textName.context)
+        }
+        holder.textName.setTextColor(color)
+        holder.textInfo.setTextColor(color)
         holder.itemView.setOnClickListener { onClick(session) }
         holder.buttonMenu.setOnClickListener {
             val popup = PopupMenu(holder.itemView.context, holder.buttonMenu)

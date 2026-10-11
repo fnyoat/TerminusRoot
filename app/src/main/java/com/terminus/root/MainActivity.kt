@@ -14,6 +14,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recycler: RecyclerView
     private lateinit var textEmpty: TextView
     private lateinit var fab: FloatingActionButton
+    private lateinit var headerTitle: TextView
+    private lateinit var headerLink: TextView
+    private lateinit var settingsLink: TextView
     private lateinit var manager: SessionManager
     private lateinit var adapter: SessionAdapter
     
@@ -26,7 +29,9 @@ class MainActivity : AppCompatActivity() {
         recycler = findViewById(R.id.recyclerSessions)
         textEmpty = findViewById(R.id.textEmpty)
         fab = findViewById(R.id.fabNewSession)
-        val headerLink = findViewById<TextView>(R.id.headerLink)
+        headerTitle = findViewById(R.id.headerTitle)
+        headerLink = findViewById(R.id.headerLink)
+        settingsLink = findViewById(R.id.settingsLink)
 
         ShizukuHelper.init()
         
@@ -52,12 +57,17 @@ class MainActivity : AppCompatActivity() {
         recycler.layoutManager = LinearLayoutManager(this)
         recycler.adapter = adapter
         
-        fab.setOnClickListener { createNewSession() }
+        fab.setOnClickListener { createNewSession(manager.resolveDefaultTemplate(this)) }
         headerLink.setOnClickListener { startActivity(Intent(this, TemplatesActivity::class.java)) }
+        settingsLink.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
     }
     
     override fun onResume() {
         super.onResume()
+        val color = TermSettings.color(this)
+        headerTitle.setTextColor(color)
+        headerLink.setTextColor(color)
+        settingsLink.setTextColor(color)
         updateList()
     }
     
@@ -67,7 +77,7 @@ class MainActivity : AppCompatActivity() {
         textEmpty.visibility = if (sessions.isEmpty()) TextView.VISIBLE else TextView.GONE
     }
     
-    private fun createNewSession() {
+    private fun createNewSession(prefill: Template?) {
         val view = layoutInflater.inflate(R.layout.dialog_template, null)
         val editName = view.findViewById<EditText>(R.id.editTemplateName)
         val editUid = view.findViewById<EditText>(R.id.editUid)
@@ -79,8 +89,20 @@ class MainActivity : AppCompatActivity() {
         val checkSu = view.findViewById<android.widget.CheckBox>(R.id.checkUseSu)
         val checkShizuku = view.findViewById<android.widget.CheckBox>(R.id.checkShizuku)
         ShellLocator.bindShellField(editShell)
-        editPath.setText("/")
-        editShell.setText(ShellLocator.findShell())
+        if (prefill == null) {
+            editPath.setText("/")
+            editShell.setText(ShellLocator.findShell())
+        } else {
+            editName.setText(prefill.name)
+            editUid.setText(prefill.uid)
+            editGid.setText(prefill.gid)
+            editPath.setText(prefill.pathCwd)
+            editChroot.setText(prefill.chrootView)
+            editShell.setText(prefill.shell)
+            editExtra.setText(prefill.extraArgs)
+            checkSu.isChecked = prefill.useSu
+            checkShizuku.isChecked = prefill.useShizuku
+        }
 
         AlertDialog.Builder(this)
             .setTitle(R.string.new_session)

@@ -59,6 +59,19 @@ class SessionManager(private val context: Context) {
     fun getSessions(): List<Session> = sessions.toList()
     fun getTemplates(): List<Template> = buildBuiltInTemplates() + templates
 
+    fun resolveDefaultTemplate(context: Context): Template? {
+        val id = TermSettings.defaultTemplateId(context)
+        if (id != TermSettings.DEFAULT_TEMPLATE_AUTO) {
+            getTemplates().firstOrNull { it.id == id }
+                ?.takeIf { Access.templateAvailable(it) }
+                ?.let { return it }
+        }
+        val usable = getTemplates().filter { Access.templateAvailable(it) }
+        return usable.firstOrNull { it.useSu }
+            ?: usable.firstOrNull { it.useShizuku }
+            ?: usable.firstOrNull()
+    }
+
     private fun buildBuiltInTemplates(): List<Template> {
         val shell = ShellLocator.findShell()
         return listOf(

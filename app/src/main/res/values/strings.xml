@@ -39,4 +39,11 @@
     <string name="empty_templates">暂无模板</string>
     <string name="builtin_root_shell">Root Shell（su）</string>
     <string name="builtin_adb_shell">ADB-Priv Shell（Shizuku）</string>
+    <string name="settings">设置</string>
+    <string name="default_template">默认模板</string>
+    <string name="auto_default_template">自动（高权限优先）</string>
+    <string name="color">终端颜色</string>
+    <string name="no_permission">无权限</string>
+    <string name="select_default_template">选择默认模板</string>
+    <string name="select_color">选择终端颜色</string>
 </resources>
