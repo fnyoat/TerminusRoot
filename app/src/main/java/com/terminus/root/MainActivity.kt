@@ -2,8 +2,6 @@ package com.terminus.root
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
 import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
@@ -22,13 +20,13 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        title = getString(R.string.app_name)
         InsetsUtil.apply(this)
         
         manager = SessionManager(this)
         recycler = findViewById(R.id.recyclerSessions)
         textEmpty = findViewById(R.id.textEmpty)
         fab = findViewById(R.id.fabNewSession)
+        val headerLink = findViewById<TextView>(R.id.headerLink)
 
         ShizukuHelper.init()
         
@@ -54,29 +52,12 @@ class MainActivity : AppCompatActivity() {
         recycler.adapter = adapter
         
         fab.setOnClickListener { createNewSession() }
+        headerLink.setOnClickListener { startActivity(Intent(this, TemplatesActivity::class.java)) }
     }
     
     override fun onResume() {
         super.onResume()
         updateList()
-    }
-    
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        return true
-    }
-    
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.menu_sessions -> {
-                true
-            }
-            R.id.menu_templates -> {
-                startActivity(Intent(this, TemplatesActivity::class.java))
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
     }
     
     private fun updateList() {

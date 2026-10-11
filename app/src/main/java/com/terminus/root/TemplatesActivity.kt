@@ -19,7 +19,6 @@ class TemplatesActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_templates)
-        title = getString(R.string.templates)
         InsetsUtil.apply(this)
         
         manager = SessionManager(this)

@@ -22,12 +22,12 @@ class TerminalActivity : AppCompatActivity() {
 setContentView(R.layout.activity_terminal)
 
         session = intent.getSerializableExtra("session") as Session
-        title = session.name
         InsetsUtil.apply(this)
 
         textOutput = findViewById(R.id.textOutput)
         editCommand = findViewById(R.id.editCommand)
         scrollView = findViewById(R.id.scrollView)
+        findViewById<TextView>(R.id.headerTitle).text = session.name
 
         ShizukuHelper.init()
         ShizukuHelper.onPermissionResult = { granted ->
