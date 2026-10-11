@@ -14,8 +14,10 @@ import android.widget.EditText
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.termux.terminal.TerminalColors
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
+import com.termux.terminal.TextStyle
 import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
 import java.io.File
@@ -76,8 +78,19 @@ class TerminalActivity : AppCompatActivity() {
         }
         terminalSession = terminal
         termView.attachSession(terminal)
+        applyTerminalColor(terminal)
         termView.onScreenUpdated()
         termView.requestFocus()
+    }
+
+    private fun applyTerminalColor(terminal: TerminalSession) {
+        val fg = TermSettings.color(this)
+        val defaults = TerminalColors.COLOR_SCHEME.mDefaultColors
+        defaults[TextStyle.COLOR_INDEX_FOREGROUND] = fg
+        defaults[TextStyle.COLOR_INDEX_CURSOR] = fg
+        val colors = terminal.emulator?.mColors ?: return
+        colors.mCurrentColors[TextStyle.COLOR_INDEX_FOREGROUND] = fg
+        colors.mCurrentColors[TextStyle.COLOR_INDEX_CURSOR] = fg
     }
 
     private fun buildLaunchCommand(): Triple<String, Array<String>, String> {
