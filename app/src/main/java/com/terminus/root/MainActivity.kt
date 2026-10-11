@@ -23,6 +23,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         title = getString(R.string.app_name)
+        InsetsUtil.apply(this)
         
         manager = SessionManager(this)
         recycler = findViewById(R.id.recyclerSessions)

@@ -20,6 +20,7 @@ class TemplatesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_templates)
         title = getString(R.string.templates)
+        InsetsUtil.apply(this)
         
         manager = SessionManager(this)
         recycler = findViewById(R.id.recyclerTemplates)

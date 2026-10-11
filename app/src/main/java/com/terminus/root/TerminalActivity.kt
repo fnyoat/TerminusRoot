@@ -19,10 +19,11 @@ class TerminalActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_terminal)
+setContentView(R.layout.activity_terminal)
 
         session = intent.getSerializableExtra("session") as Session
         title = session.name
+        InsetsUtil.apply(this)
 
         textOutput = findViewById(R.id.textOutput)
         editCommand = findViewById(R.id.editCommand)
