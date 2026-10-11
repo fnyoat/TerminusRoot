@@ -13,10 +13,15 @@ object TermSettings {
     private const val KEY_FONT_SIZE = "term_font_size"
     private const val KEY_DEFAULT_PWD = "default_pwd"
     private const val KEY_QUICK = "quick_entries"
+    private const val KEY_CURSOR_STYLE = "cursor_style"
 
     const val DEFAULT_TEMPLATE_AUTO = "auto"
 
     val FONT_SIZES = listOf(18, 22, 26, 30, 34, 40, 48, 56)
+
+    const val CURSOR_BLOCK = 0
+    const val CURSOR_UNDERLINE = 1
+    const val CURSOR_BAR = 2
 
     data class Preset(val name: String, val color: Int)
 
@@ -56,6 +61,13 @@ object TermSettings {
 
     fun setFontSize(context: Context, size: Int) {
         prefs(context).edit { putInt(KEY_FONT_SIZE, size) }
+    }
+
+    fun cursorStyle(context: Context): Int =
+        prefs(context).getInt(KEY_CURSOR_STYLE, CURSOR_BLOCK)
+
+    fun setCursorStyle(context: Context, style: Int) {
+        prefs(context).edit { putInt(KEY_CURSOR_STYLE, style) }
     }
 
     fun defaultPwd(context: Context): String =

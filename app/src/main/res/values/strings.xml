@@ -63,4 +63,11 @@
     <string name="quick_as_dir">作为目录（执行 cd）</string>
     <string name="quick_empty">暂无快捷项，点击“＋ 添加”</string>
     <string name="quick_delete_confirm">删除快捷项？</string>
+    <string name="customize">自定义</string>
+    <string name="display">显示</string>
+    <string name="cursor_style">光标样式</string>
+    <string name="select_cursor_style">选择光标样式</string>
+    <string name="cursor_block">方块</string>
+    <string name="cursor_underline">下划线</string>
+    <string name="cursor_bar">竖线</string>
 </resources>

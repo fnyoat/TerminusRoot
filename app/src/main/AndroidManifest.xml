@@ -41,6 +41,10 @@
             android:name=".SettingsActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize|stateHidden" />
+        <activity
+            android:name=".CustomizeActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize|stateHidden" />
 
         <provider
             android:name="rikka.shizuku.ShizukuProvider"

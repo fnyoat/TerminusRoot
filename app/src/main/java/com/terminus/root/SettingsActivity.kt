@@ -22,10 +22,8 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var textDefaultTemplate: TextView
     private lateinit var textColorSummary: TextView
     private lateinit var viewColorSwatch: View
-    private lateinit var textFontSize: TextView
     private lateinit var textDefaultPwd: TextView
     private lateinit var textAllFiles: TextView
-    private lateinit var textQuickCount: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,21 +34,20 @@ class SettingsActivity : AppCompatActivity() {
         textDefaultTemplate = findViewById(R.id.textDefaultTemplate)
         textColorSummary = findViewById(R.id.textColorSummary)
         viewColorSwatch = findViewById(R.id.viewColorSwatch)
-        textFontSize = findViewById(R.id.textFontSize)
         textDefaultPwd = findViewById(R.id.textDefaultPwd)
         textAllFiles = findViewById(R.id.textAllFiles)
-        textQuickCount = findViewById(R.id.textQuickCount)
         findViewById<TextView>(R.id.headerTitle).setTextColor(TermSettings.color(this))
 
         findViewById<View>(R.id.rowTemplates).setOnClickListener {
             startActivity(Intent(this, TemplatesActivity::class.java))
         }
         findViewById<View>(R.id.rowDefaultTemplate).setOnClickListener { showDefaultTemplateDialog() }
+        findViewById<View>(R.id.rowCustomize).setOnClickListener {
+            startActivity(Intent(this, CustomizeActivity::class.java))
+        }
         findViewById<View>(R.id.rowColor).setOnClickListener { showColorDialog() }
-        findViewById<View>(R.id.rowFontSize).setOnClickListener { showFontSizeDialog() }
         findViewById<View>(R.id.rowDefaultPwd).setOnClickListener { showDefaultPwdDialog() }
         findViewById<View>(R.id.rowAllFiles).setOnClickListener { requestAllFilesAccess() }
-        findViewById<View>(R.id.rowQuick).setOnClickListener { QuickCollection.showManager(this) }
     }
 
     override fun onResume() {
@@ -64,13 +61,11 @@ class SettingsActivity : AppCompatActivity() {
         textColorSummary.text = preset?.name ?: "#%08X".format(current)
         (viewColorSwatch.background as GradientDrawable).setColor(current)
         textDefaultTemplate.text = defaultTemplateSummary()
-        textFontSize.text = getString(R.string.font_size_value, TermSettings.fontSize(this))
         textDefaultPwd.text = TermSettings.defaultPwd(this)
             .ifEmpty { getString(R.string.pwd_system_default) }
         textAllFiles.text = getString(
             if (hasAllFilesAccess()) R.string.all_files_granted else R.string.all_files_denied
         )
-        textQuickCount.text = TermSettings.quickEntries(this).size.toString()
     }
 
     private fun hasAllFilesAccess(): Boolean =
@@ -161,22 +156,6 @@ class SettingsActivity : AppCompatActivity() {
                 TermSettings.setDefaultPwd(this, input.text.toString().trim())
                 refresh()
             }
-            .show()
-    }
-
-    private fun showFontSizeDialog() {
-        val sizes = TermSettings.FONT_SIZES
-        val names = sizes.map { getString(R.string.font_size_value, it) }.toTypedArray()
-        val current = TermSettings.fontSize(this)
-        val selectedIndex = sizes.indexOfFirst { it == current }.let { if (it < 0) sizes.indexOf(30) else it }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.select_font_size)
-            .setSingleChoiceItems(names, selectedIndex) { dialog, which ->
-                TermSettings.setFontSize(this, sizes[which])
-                dialog.dismiss()
-                refresh()
-            }
-            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 

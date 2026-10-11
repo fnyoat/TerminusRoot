@@ -28,6 +28,7 @@ import java.io.File
 private const val TAG = "TerminalActivity"
 private val terminalSessions = HashMap<String, TerminalSession>()
 private var currentTerminal: TerminalActivity? = null
+private var currentCursorStyle = TermSettings.CURSOR_BLOCK
 
 class TerminalActivity : AppCompatActivity() {
     private lateinit var textOutput: TextView
@@ -86,6 +87,8 @@ class TerminalActivity : AppCompatActivity() {
         terminalSession = terminal
         termView.attachSession(terminal)
         applyTerminalColor(terminal)
+        currentCursorStyle = TermSettings.cursorStyle(this)
+        terminal.emulator?.setCursorStyle()
         termView.onScreenUpdated()
         termView.requestFocus()
     }
@@ -430,7 +433,7 @@ private object SessionClient : TerminalSessionClient {
 
     override fun onTerminalCursorStateChange(state: Boolean) {}
 
-    override fun getTerminalCursorStyle(): Int? = null
+    override fun getTerminalCursorStyle(): Int? = currentCursorStyle
 
     override fun logError(tag: String, message: String) { Log.e(tag, message) }
 
