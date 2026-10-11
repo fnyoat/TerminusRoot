@@ -18,6 +18,7 @@ object TermSettings {
     data class Preset(val name: String, val color: Int)
 
     val PRESETS = listOf(
+        Preset("灰白", Color.rgb(0xE0, 0xE0, 0xE0)),
         Preset("绿色", Color.rgb(0x33, 0xFF, 0x33)),
         Preset("琥珀", Color.rgb(0xFF, 0xC1, 0x07)),
         Preset("青色", Color.rgb(0x00, 0xE5, 0xFF)),
