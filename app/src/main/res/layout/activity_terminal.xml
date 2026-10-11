@@ -36,7 +36,6 @@
             android:fontFamily="monospace"
             android:textColor="@color/terminal_text"
             android:textSize="12sp"
-            android:gravity="bottom"
             android:scrollbars="vertical" />
     </ScrollView>
 

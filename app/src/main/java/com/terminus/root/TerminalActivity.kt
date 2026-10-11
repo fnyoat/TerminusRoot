@@ -58,6 +58,8 @@ setContentView(R.layout.activity_terminal)
         executor.onOutput = { output -> append(output) }
         executor.onError = { error -> append(error) }
 
+        printWelcome()
+
         if (session.useShizuku) {
             ensureShizukuReady()
         } else {
@@ -78,6 +80,19 @@ setContentView(R.layout.activity_terminal)
                 false
             }
         }
+    }
+
+    private fun printWelcome() {
+        append("$TERMINUS_BANNER\n")
+        append("会话: ${session.name}\n")
+        append("Shell: ${session.shell}\n")
+        if (session.uid.isNotBlank() || session.gid.isNotBlank()) {
+            append("UID/GID: ${session.uid.ifBlank { "-" }}/${session.gid.ifBlank { "-" }}\n")
+        }
+        if (session.useSu) append("提权: Root (su)\n")
+        if (session.useShizuku) append("提权: Shizuku\n")
+        append("输入命令执行，输入 exit 退出会话\n")
+        append("$TERMINUS_BANNER\n")
     }
 
     private fun ensureShizukuReady() {
@@ -120,5 +135,9 @@ setContentView(R.layout.activity_terminal)
         ShizukuHelper.onPermissionResult = null
         ShizukuHelper.onBinderStateChanged = null
         executor.stop()
+    }
+
+    companion object {
+        private const val TERMINUS_BANNER = "=========================="
     }
 }

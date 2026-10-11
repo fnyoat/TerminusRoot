@@ -57,7 +57,11 @@ class MainActivity : AppCompatActivity() {
         recycler.layoutManager = LinearLayoutManager(this)
         recycler.adapter = adapter
         
-        fab.setOnClickListener { createNewSession(manager.resolveDefaultTemplate(this)) }
+        fab.setOnClickListener { startDefaultSession() }
+        fab.setOnLongClickListener {
+            createNewSession(manager.resolveDefaultTemplate(this))
+            true
+        }
         headerLink.setOnClickListener { startActivity(Intent(this, TemplatesActivity::class.java)) }
         settingsLink.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
     }
@@ -77,6 +81,26 @@ class MainActivity : AppCompatActivity() {
         textEmpty.visibility = if (sessions.isEmpty()) TextView.VISIBLE else TextView.GONE
     }
     
+    private fun startDefaultSession() {
+        val template = manager.resolveDefaultTemplate(this)
+        val session = Session(
+            name = template?.name ?: "会话-${System.currentTimeMillis() % 10000}",
+            shell = template?.shell ?: ShellLocator.findShell(),
+            useSu = template?.useSu == true,
+            useShizuku = template?.useShizuku == true,
+            cwd = template?.pathCwd ?: "/",
+            chroot = template?.chrootView,
+            extraArgs = template?.extraArgs ?: "",
+            uid = template?.uid ?: "",
+            gid = template?.gid ?: "",
+            templateId = template?.id
+        )
+        manager.addSession(session)
+        val intent = Intent(this, TerminalActivity::class.java)
+        intent.putExtra("session", session)
+        startActivity(intent)
+    }
+
     private fun createNewSession(prefill: Template?) {
         val view = layoutInflater.inflate(R.layout.dialog_template, null)
         val editName = view.findViewById<EditText>(R.id.editTemplateName)
