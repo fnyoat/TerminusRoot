@@ -346,6 +346,7 @@ class TerminalActivity : AppCompatActivity() {
     private fun shQuote(path: String): String = "'" + path.replace("'", "'\\''") + "'"
 
     companion object {
+        private const val TAG = "TerminalActivity"
         private const val TERMINUS_BANNER = "=========================="
         private val BASE_ENV = arrayOf(
             "TERM=xterm-256color",
