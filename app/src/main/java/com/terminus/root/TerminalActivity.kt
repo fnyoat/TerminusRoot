@@ -73,6 +73,9 @@ class TerminalActivity : AppCompatActivity() {
             setupShizukuMode(color)
         } else {
             setupTerminalMode(color)
+            if (intent.getBooleanExtra("auto_detach", false)) {
+                termView.postDelayed({ detachSession() }, 900)
+            }
         }
     }
 

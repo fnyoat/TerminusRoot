@@ -67,7 +67,7 @@ class MainActivity : AppCompatActivity() {
         settingsLink.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
 
         if (intent?.getBooleanExtra("auto_default", false) == true) {
-            startDefaultSession()
+            startDefaultSession(intent?.getBooleanExtra("auto_detach", false) == true)
         }
     }
     
@@ -96,7 +96,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    private fun startDefaultSession() {
+    private fun startDefaultSession(detach: Boolean = false) {
         val template = manager.resolveDefaultTemplate(this)
         val session = Session(
             name = template?.name ?: "会话-${System.currentTimeMillis() % 10000}",
@@ -113,6 +113,7 @@ class MainActivity : AppCompatActivity() {
         manager.addSession(session)
         val intent = Intent(this, TerminalActivity::class.java)
         intent.putExtra("session", session)
+        intent.putExtra("auto_detach", detach)
         startActivity(intent)
     }
 
