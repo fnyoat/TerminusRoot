@@ -52,11 +52,12 @@ class TemplatesActivity : AppCompatActivity() {
         val editGuid = view.findViewById<EditText>(R.id.editGuid)
         val editPath = view.findViewById<EditText>(R.id.editPathCwd)
         val editChroot = view.findViewById<EditText>(R.id.editChrootView)
-        val editShell = view.findViewById<EditText>(R.id.editShell)
+        val editShell = view.findViewById<android.widget.AutoCompleteTextView>(R.id.editShell)
         val editExtra = view.findViewById<EditText>(R.id.editExtraArgs)
         val checkSu = view.findViewById<android.widget.CheckBox>(R.id.checkUseSu)
         val checkShizuku = view.findViewById<android.widget.CheckBox>(R.id.checkShizuku)
-        
+        ShellLocator.bindShellField(editShell)
+
         template?.let {
             editName.setText(it.name)
             editGuid.setText(it.guid)
@@ -66,6 +67,9 @@ class TemplatesActivity : AppCompatActivity() {
             editExtra.setText(it.extraArgs)
             checkSu.isChecked = it.useSu
             checkShizuku.isChecked = it.useShizuku
+        }
+        if (editShell.text.isNullOrEmpty()) {
+            editShell.setText(ShellLocator.findShell())
         }
         
         AlertDialog.Builder(this)
@@ -77,7 +81,7 @@ class TemplatesActivity : AppCompatActivity() {
                     guid = editGuid.text.toString().ifEmpty { java.util.UUID.randomUUID().toString() },
                     pathCwd = editPath.text.toString().ifEmpty { "/" },
                     chrootView = editChroot.text.toString().takeIf { it.isNotEmpty() },
-                    shell = editShell.text.toString().ifEmpty { "/bin/sh" },
+                    shell = editShell.text.toString().ifEmpty { ShellLocator.findShell() },
                     useSu = checkSu.isChecked,
                     useShizuku = checkShizuku.isChecked,
                     extraArgs = editExtra.text.toString()
@@ -86,7 +90,7 @@ class TemplatesActivity : AppCompatActivity() {
                     guid = editGuid.text.toString().ifEmpty { java.util.UUID.randomUUID().toString() },
                     pathCwd = editPath.text.toString().ifEmpty { "/" },
                     chrootView = editChroot.text.toString().takeIf { it.isNotEmpty() },
-                    shell = editShell.text.toString().ifEmpty { "/bin/sh" },
+                    shell = editShell.text.toString().ifEmpty { ShellLocator.findShell() },
                     useSu = checkSu.isChecked,
                     useShizuku = checkShizuku.isChecked,
                     extraArgs = editExtra.text.toString()

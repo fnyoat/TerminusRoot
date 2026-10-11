@@ -6,7 +6,7 @@ import java.util.UUID
 data class Session(
     val id: String = UUID.randomUUID().toString(),
     var name: String = "会话",
-    var shell: String = "/bin/sh",
+    var shell: String = "/system/bin/sh",
     var useSu: Boolean = false,
     var useShizuku: Boolean = false,
     var cwd: String = "/",

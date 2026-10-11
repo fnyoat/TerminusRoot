@@ -90,13 +90,14 @@ class MainActivity : AppCompatActivity() {
         val editGuid = view.findViewById<EditText>(R.id.editGuid)
         val editPath = view.findViewById<EditText>(R.id.editPathCwd)
         val editChroot = view.findViewById<EditText>(R.id.editChrootView)
-        val editShell = view.findViewById<EditText>(R.id.editShell)
+        val editShell = view.findViewById<android.widget.AutoCompleteTextView>(R.id.editShell)
         val editExtra = view.findViewById<EditText>(R.id.editExtraArgs)
         val checkSu = view.findViewById<android.widget.CheckBox>(R.id.checkUseSu)
         val checkShizuku = view.findViewById<android.widget.CheckBox>(R.id.checkShizuku)
+        ShellLocator.bindShellField(editShell)
         editGuid.setText(java.util.UUID.randomUUID().toString())
         editPath.setText("/")
-        editShell.setText("/bin/sh")
+        editShell.setText(ShellLocator.findShell())
 
         AlertDialog.Builder(this)
             .setTitle(R.string.new_session)
@@ -107,7 +108,7 @@ class MainActivity : AppCompatActivity() {
                     guid = editGuid.text.toString(),
                     cwd = editPath.text.toString().ifEmpty { "/" },
                     chroot = editChroot.text.toString().takeIf { it.isNotEmpty() },
-                    shell = editShell.text.toString().ifEmpty { "/bin/sh" },
+                    shell = editShell.text.toString().ifEmpty { ShellLocator.findShell() },
                     useSu = checkSu.isChecked,
                     useShizuku = checkShizuku.isChecked,
                     extraArgs = editExtra.text.toString()

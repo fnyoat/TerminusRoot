@@ -63,11 +63,12 @@
             android:layout_marginBottom="8dp"
             android:hint="@string/shell">
 
-            <com.google.android.material.textfield.TextInputEditText
+            <AutoCompleteTextView
                 android:id="@+id/editShell"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="/bin/sh" />
+                android:completionThreshold="1"
+                android:inputType="textNoSuggestions" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout

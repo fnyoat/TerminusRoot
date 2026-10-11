@@ -59,7 +59,8 @@ class TerminalExecutor(private val context: Context, private val session: Sessio
                 return pb.start()
             }
         }
-        val cmd = mutableListOf(session.shell)
+        val shell = if (session.chroot.isNullOrEmpty()) ShellLocator.resolve(session.shell) else session.shell
+        val cmd = mutableListOf(shell)
         cmd.addAll(splitArgs(session.extraArgs))
         if (!session.chroot.isNullOrEmpty()) {
             cmd.add(0, session.chroot!!)

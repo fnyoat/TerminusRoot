@@ -31,7 +31,11 @@ class ShizukuTerminal(
             service = shell
             try {
                 shell.start(
-                    session.shell,
+                    if (session.chroot.isNullOrEmpty()) {
+                        ShellLocator.resolve(session.shell)
+                    } else {
+                        session.shell
+                    },
                     splitArgs(session.extraArgs).toTypedArray(),
                     ENVIRONMENT,
                     session.cwd.takeIf { it.isNotEmpty() },

@@ -9,7 +9,7 @@ data class Template(
     var guid: String = UUID.randomUUID().toString(),
     var pathCwd: String = "/",
     var chrootView: String? = null,
-    var shell: String = "/bin/sh",
+    var shell: String = "/system/bin/sh",
     var useSu: Boolean = false,
     var useShizuku: Boolean = false,
     var extraArgs: String = ""
