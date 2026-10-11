@@ -28,7 +28,7 @@ class TerminalActivity : AppCompatActivity() {
     private lateinit var textOutput: TextView
     private lateinit var editCommand: EditText
     private lateinit var scrollView: ScrollView
-    private lateinit var termView: TerminalView
+    lateinit var termView: TerminalView
     private lateinit var layoutInput: View
     private var executor: TerminalExecutor? = null
     private lateinit var session: Session
@@ -230,17 +230,17 @@ class TerminalActivity : AppCompatActivity() {
 
     private val viewClient = ViewClient
 
-    private fun showKeyboard() {
+    internal fun showKeyboard() {
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.showSoftInput(termView, InputMethodManager.SHOW_IMPLICIT)
     }
 
-    private fun copyToClipboard(text: String) {
+    internal fun copyToClipboard(text: String) {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("Terminus", text))
     }
 
-    private fun clipText(): String? =
+    internal fun clipText(): String? =
         (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)?.primaryClip
             ?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()
 
