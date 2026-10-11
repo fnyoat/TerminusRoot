@@ -62,6 +62,7 @@ class TerminalActivity : AppCompatActivity() {
         layoutInput.visibility = View.GONE
 
         termView.setTerminalViewClient(viewClient)
+        termView.setTextSize(12)
 
         val launch = buildLaunchCommand()
         val terminal = TerminalSession(
