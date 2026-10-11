@@ -65,7 +65,7 @@ class TerminalActivity : AppCompatActivity() {
 
         val launch = buildLaunchCommand()
         val terminal = TerminalSession(
-            launch.first, launch.second, launch.third, BASE_ENV, 2000, sessionClient
+            launch.first, launch.third, launch.second, BASE_ENV, 2000, sessionClient
         )
         terminalSession = terminal
         termView.attachSession(terminal)
