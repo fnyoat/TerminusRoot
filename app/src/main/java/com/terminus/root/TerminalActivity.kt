@@ -62,7 +62,7 @@ class TerminalActivity : AppCompatActivity() {
         layoutInput.visibility = View.GONE
 
         termView.setTerminalViewClient(viewClient)
-        termView.setTextSize(12)
+        termView.setTextSize(TermSettings.fontSize(this))
 
         val launch = buildLaunchCommand()
         val terminal = TerminalSession(
@@ -71,11 +71,6 @@ class TerminalActivity : AppCompatActivity() {
         terminalSession = terminal
         termView.attachSession(terminal)
         termView.requestFocus()
-        termView.postDelayed({
-            val em = terminalSession?.getEmulator()
-            val screen = em?.getScreen()?.getSelectedText(0, 0, em.mColumns, em.mRows)
-            Log.i(TAG, "term screen: " + screen?.replace("\n", "|"))
-        }, 1500)
     }
 
     private fun buildLaunchCommand(): Triple<String, Array<String>, String> {

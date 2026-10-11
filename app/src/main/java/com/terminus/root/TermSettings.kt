@@ -8,8 +8,11 @@ object TermSettings {
     private const val PREFS = "terminus_settings"
     private const val KEY_COLOR = "term_color"
     private const val KEY_TEMPLATE = "default_template_id"
+    private const val KEY_FONT_SIZE = "term_font_size"
 
     const val DEFAULT_TEMPLATE_AUTO = "auto"
+
+    val FONT_SIZES = listOf(9, 10, 11, 12, 14, 16, 18, 22, 26, 32)
 
     data class Preset(val name: String, val color: Int)
 
@@ -39,5 +42,12 @@ object TermSettings {
 
     fun setDefaultTemplateId(context: Context, id: String) {
         prefs(context).edit { putString(KEY_TEMPLATE, id) }
+    }
+
+    fun fontSize(context: Context): Int =
+        prefs(context).getInt(KEY_FONT_SIZE, FONT_SIZES[2])
+
+    fun setFontSize(context: Context, size: Int) {
+        prefs(context).edit { putInt(KEY_FONT_SIZE, size) }
     }
 }

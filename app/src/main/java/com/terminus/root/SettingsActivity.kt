@@ -12,6 +12,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var textDefaultTemplate: TextView
     private lateinit var textColorSummary: TextView
     private lateinit var viewColorSwatch: View
+    private lateinit var textFontSize: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,10 +23,12 @@ class SettingsActivity : AppCompatActivity() {
         textDefaultTemplate = findViewById(R.id.textDefaultTemplate)
         textColorSummary = findViewById(R.id.textColorSummary)
         viewColorSwatch = findViewById(R.id.viewColorSwatch)
+        textFontSize = findViewById(R.id.textFontSize)
         findViewById<TextView>(R.id.headerTitle).setTextColor(TermSettings.color(this))
 
         findViewById<View>(R.id.rowDefaultTemplate).setOnClickListener { showDefaultTemplateDialog() }
         findViewById<View>(R.id.rowColor).setOnClickListener { showColorDialog() }
+        findViewById<View>(R.id.rowFontSize).setOnClickListener { showFontSizeDialog() }
     }
 
     override fun onResume() {
@@ -39,6 +42,7 @@ class SettingsActivity : AppCompatActivity() {
         textColorSummary.text = preset?.name ?: "#%08X".format(current)
         (viewColorSwatch.background as GradientDrawable).setColor(current)
         textDefaultTemplate.text = defaultTemplateSummary()
+        textFontSize.text = getString(R.string.font_size_value, TermSettings.fontSize(this))
     }
 
     private fun defaultTemplateSummary(): String {
@@ -78,6 +82,22 @@ class SettingsActivity : AppCompatActivity() {
             .setTitle(R.string.select_color)
             .setSingleChoiceItems(names, selectedIndex) { dialog, which ->
                 TermSettings.setColor(this, TermSettings.PRESETS[which].color)
+                dialog.dismiss()
+                refresh()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showFontSizeDialog() {
+        val sizes = TermSettings.FONT_SIZES
+        val names = sizes.map { getString(R.string.font_size_value, it) }.toTypedArray()
+        val current = TermSettings.fontSize(this)
+        val selectedIndex = sizes.indexOfFirst { it == current }.let { if (it < 0) sizes.indexOf(12) else it }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.select_font_size)
+            .setSingleChoiceItems(names, selectedIndex) { dialog, which ->
+                TermSettings.setFontSize(this, sizes[which])
                 dialog.dismiss()
                 refresh()
             }
