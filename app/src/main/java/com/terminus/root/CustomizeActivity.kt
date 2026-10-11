@@ -1,6 +1,7 @@
 package com.terminus.root
 
 import android.os.Bundle
+import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -18,8 +19,8 @@ class CustomizeActivity : AppCompatActivity() {
         textCursorStyle = findViewById(R.id.textCursorStyle)
         findViewById<TextView>(R.id.headerTitle).setTextColor(TermSettings.color(this))
 
-        findViewById<TextView>(R.id.rowFontSize).setOnClickListener { showFontSizeDialog() }
-        findViewById<TextView>(R.id.rowCursorStyle).setOnClickListener { showCursorStyleDialog() }
+        findViewById<View>(R.id.rowFontSize).setOnClickListener { showFontSizeDialog() }
+        findViewById<View>(R.id.rowCursorStyle).setOnClickListener { showCursorStyleDialog() }
     }
 
     override fun onResume() {
