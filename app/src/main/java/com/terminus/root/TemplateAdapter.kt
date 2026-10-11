@@ -13,7 +13,8 @@ class TemplateAdapter(
     private val onUse: (Template) -> Unit,
     private val onEdit: (Template) -> Unit,
     private val onDelete: (Template) -> Unit,
-    private val available: (Template) -> Boolean = { true }
+    private val available: (Template) -> Boolean = { true },
+    private val blocked: (Template) -> Boolean = { false }
 ) : RecyclerView.Adapter<TemplateAdapter.TemplateViewHolder>() {
 
     class TemplateViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -31,9 +32,12 @@ class TemplateAdapter(
     override fun onBindViewHolder(holder: TemplateViewHolder, position: Int) {
         val template = templates[position]
         val accessible = available(template)
+        val isBlocked = blocked(template)
         holder.textName.text = template.name
         val info = buildString {
-            append("GUID:${template.guid}")
+            if (template.uid.isNotBlank() || template.gid.isNotBlank()) {
+                append("uid:${template.uid.ifBlank { "-" }} gid:${template.gid.ifBlank { "-" }}")
+            }
             if (template.pathCwd.isNotEmpty()) append(" | ${template.pathCwd}")
             if (!template.chrootView.isNullOrEmpty()) append(" | chroot:${template.chrootView}")
             append(
@@ -45,6 +49,11 @@ class TemplateAdapter(
             )
         }
         holder.textInfo.text = info
+        val textColor = holder.textName.context.getColor(
+            if (isBlocked) R.color.terminal_red else R.color.terminal_text
+        )
+        holder.textName.setTextColor(textColor)
+        holder.textInfo.setTextColor(textColor)
         holder.itemView.alpha = if (accessible) 1f else 0.4f
         holder.itemView.isEnabled = accessible
         holder.buttonMenu.setOnClickListener {

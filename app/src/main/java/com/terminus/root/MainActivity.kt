@@ -45,7 +45,8 @@ class MainActivity : AppCompatActivity() {
                 intent.putExtra("session", newSession)
                 startActivity(intent)
             },
-            onClose = { session -> closeSession(session) }
+            onClose = { session -> closeSession(session) },
+            blocked = { session -> Access.sessionProfileBlocked(session) }
         )
         
         recycler.layoutManager = LinearLayoutManager(this)
@@ -69,7 +70,8 @@ class MainActivity : AppCompatActivity() {
     private fun createNewSession() {
         val view = layoutInflater.inflate(R.layout.dialog_template, null)
         val editName = view.findViewById<EditText>(R.id.editTemplateName)
-        val editGuid = view.findViewById<EditText>(R.id.editGuid)
+        val editUid = view.findViewById<EditText>(R.id.editUid)
+        val editGid = view.findViewById<EditText>(R.id.editGid)
         val editPath = view.findViewById<EditText>(R.id.editPathCwd)
         val editChroot = view.findViewById<EditText>(R.id.editChrootView)
         val editShell = view.findViewById<android.widget.AutoCompleteTextView>(R.id.editShell)
@@ -77,7 +79,6 @@ class MainActivity : AppCompatActivity() {
         val checkSu = view.findViewById<android.widget.CheckBox>(R.id.checkUseSu)
         val checkShizuku = view.findViewById<android.widget.CheckBox>(R.id.checkShizuku)
         ShellLocator.bindShellField(editShell)
-        editGuid.setText(java.util.UUID.randomUUID().toString())
         editPath.setText("/")
         editShell.setText(ShellLocator.findShell())
 
@@ -87,12 +88,13 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton(R.string.ok) { _, _ ->
                 val session = Session(
                     name = editName.text.toString().ifEmpty { "会话-${System.currentTimeMillis() % 10000}" },
-                    guid = editGuid.text.toString(),
                     cwd = editPath.text.toString().ifEmpty { "/" },
                     chroot = editChroot.text.toString().takeIf { it.isNotEmpty() },
                     shell = editShell.text.toString().ifEmpty { ShellLocator.findShell() },
                     useSu = checkSu.isChecked,
                     useShizuku = checkShizuku.isChecked,
+                    uid = editUid.text.toString().trim().takeIf { it.isNotEmpty() },
+                    gid = editGid.text.toString().trim().takeIf { it.isNotEmpty() },
                     extraArgs = editExtra.text.toString()
                 )
                 manager.addSession(session)

@@ -4,5 +4,6 @@
     <color name="white">#FFFFFFFF</color>
     <color name="terminal_bg">#FF0F0F0F</color>
     <color name="terminal_text">#FF33FF33</color>
+    <color name="terminal_red">#FFFF5252</color>
     <color name="accent">#FF2196F3</color>
 </resources>

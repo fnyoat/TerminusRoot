@@ -18,7 +18,8 @@
     <string name="templates">模板</string>
     <string name="new_template">新建模板</string>
     <string name="template_name">模板名称</string>
-    <string name="guid">GUID</string>
+    <string name="uid">UID（su 用户）</string>
+    <string name="gid">GID（su 组）</string>
     <string name="path_cwd">工作目录（Path/CWD）</string>
     <string name="chroot_view">Chroot 路径（chroot view）</string>
     <string name="extra_args">额外参数</string>

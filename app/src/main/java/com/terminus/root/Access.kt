@@ -26,11 +26,23 @@ object Access {
         false
     }
 
+    fun needsProfile(uid: String, gid: String): Boolean =
+        (uid.isNotBlank() && uid.trim() != "0") || gid.isNotBlank()
+
+    fun canUseProfile(uid: String, gid: String): Boolean =
+        !needsProfile(uid, gid) || suAvailable()
+
     fun templateAvailable(template: Template): Boolean = when {
-        template.useShizuku -> shizukuReady()
-        template.useSu -> suAvailable()
-        else -> true
+        template.useShizuku -> shizukuReady() && canUseProfile(template.uid, template.gid)
+        template.useSu -> suAvailable() && canUseProfile(template.uid, template.gid)
+        else -> canUseProfile(template.uid, template.gid)
     }
+
+    fun sessionProfileBlocked(session: Session): Boolean =
+        needsProfile(session.uid, session.gid) && !canUseProfile(session.uid, session.gid)
+
+    fun templateProfileBlocked(template: Template): Boolean =
+        needsProfile(template.uid, template.gid) && !canUseProfile(template.uid, template.gid)
 
     private fun testCommand(vararg cmd: String): Boolean = try {
         ProcessBuilder(*cmd).start().waitFor() == 0

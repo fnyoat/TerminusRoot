@@ -13,7 +13,8 @@ class SessionAdapter(
     private val onClick: (Session) -> Unit,
     private val onRename: (Session) -> Unit,
     private val onDuplicate: (Session) -> Unit,
-    private val onClose: (Session) -> Unit
+    private val onClose: (Session) -> Unit,
+    private val blocked: (Session) -> Boolean = { false }
 ) : RecyclerView.Adapter<SessionAdapter.SessionViewHolder>() {
     
     class SessionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -30,6 +31,7 @@ class SessionAdapter(
     
     override fun onBindViewHolder(holder: SessionViewHolder, position: Int) {
         val session = sessions[position]
+        val isBlocked = blocked(session)
         holder.textName.text = session.name
         val info = buildString {
             append(
@@ -39,10 +41,23 @@ class SessionAdapter(
                     else -> session.shell
                 }
             )
+            if (session.uid.isNotBlank() || session.gid.isNotBlank()) {
+                append(" | uid:${session.uid.ifBlank { "-" }} gid:${session.gid.ifBlank { "-" }}")
+            }
             if (session.cwd.isNotEmpty()) append(" | $session.cwd")
             if (!session.chroot.isNullOrEmpty()) append(" | chroot:$session.chroot")
         }
         holder.textInfo.text = info
+        holder.textName.setTextColor(
+            holder.textName.context.getColor(
+                if (isBlocked) R.color.terminal_red else R.color.terminal_text
+            )
+        )
+        holder.textInfo.setTextColor(
+            holder.textInfo.context.getColor(
+                if (isBlocked) R.color.terminal_red else R.color.terminal_text
+            )
+        )
         holder.itemView.setOnClickListener { onClick(session) }
         holder.buttonMenu.setOnClickListener {
             val popup = PopupMenu(holder.itemView.context, holder.buttonMenu)

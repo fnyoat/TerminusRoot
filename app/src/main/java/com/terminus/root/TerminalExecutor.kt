@@ -53,11 +53,25 @@ class TerminalExecutor(private val context: Context, private val session: Sessio
             if (!isSuAvailable()) {
                 onError?.invoke("未找到 su 命令，已回退为普通 Shell\n")
             } else {
-                val pb = ProcessBuilder("su")
+                val cmd = mutableListOf("su")
+                val uid = session.uid.trim()
+                val gid = session.gid.trim()
+                if (uid.isNotEmpty() && uid != "0") {
+                    cmd += "--uid"
+                    cmd += uid
+                }
+                if (gid.isNotEmpty()) {
+                    cmd += "--gid"
+                    cmd += gid
+                }
+                val pb = ProcessBuilder(cmd)
                 pb.environment()["TERM"] = "xterm-256color"
                 pb.redirectErrorStream(true)
                 return pb.start()
             }
+        }
+        if (Access.needsProfile(session.uid, session.gid)) {
+            onError?.invoke("指定了 UID/GID，但非 Root Shell，无法切换用户\n")
         }
         val shell = if (session.chroot.isNullOrEmpty()) ShellLocator.resolve(session.shell) else session.shell
         val cmd = mutableListOf(shell)

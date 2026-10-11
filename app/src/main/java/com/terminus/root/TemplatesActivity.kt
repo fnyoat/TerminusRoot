@@ -31,7 +31,8 @@ class TemplatesActivity : AppCompatActivity() {
             onUse = { template -> useTemplate(template) },
             onEdit = { template -> editTemplate(template) },
             onDelete = { template -> deleteTemplate(template) },
-            available = { template -> Access.templateAvailable(template) }
+            available = { template -> Access.templateAvailable(template) },
+            blocked = { template -> Access.templateProfileBlocked(template) }
         )
         
         recycler.layoutManager = LinearLayoutManager(this)
@@ -55,7 +56,8 @@ class TemplatesActivity : AppCompatActivity() {
     private fun showTemplateDialog(template: Template?) {
         val view = layoutInflater.inflate(R.layout.dialog_template, null)
         val editName = view.findViewById<EditText>(R.id.editTemplateName)
-        val editGuid = view.findViewById<EditText>(R.id.editGuid)
+        val editUid = view.findViewById<EditText>(R.id.editUid)
+        val editGid = view.findViewById<EditText>(R.id.editGid)
         val editPath = view.findViewById<EditText>(R.id.editPathCwd)
         val editChroot = view.findViewById<EditText>(R.id.editChrootView)
         val editShell = view.findViewById<android.widget.AutoCompleteTextView>(R.id.editShell)
@@ -66,7 +68,8 @@ class TemplatesActivity : AppCompatActivity() {
 
         template?.let {
             editName.setText(it.name)
-            editGuid.setText(it.guid)
+            editUid.setText(it.uid)
+            editGid.setText(it.gid)
             editPath.setText(it.pathCwd)
             editChroot.setText(it.chrootView)
             editShell.setText(it.shell)
@@ -84,21 +87,23 @@ class TemplatesActivity : AppCompatActivity() {
             .setPositiveButton(R.string.save) { _, _ ->
                 val newTemplate = template?.copy(
                     name = editName.text.toString().ifEmpty { "模板" },
-                    guid = editGuid.text.toString().ifEmpty { java.util.UUID.randomUUID().toString() },
                     pathCwd = editPath.text.toString().ifEmpty { "/" },
                     chrootView = editChroot.text.toString().takeIf { it.isNotEmpty() },
                     shell = editShell.text.toString().ifEmpty { ShellLocator.findShell() },
                     useSu = checkSu.isChecked,
                     useShizuku = checkShizuku.isChecked,
+                    uid = editUid.text.toString().trim().takeIf { it.isNotEmpty() },
+                    gid = editGid.text.toString().trim().takeIf { it.isNotEmpty() },
                     extraArgs = editExtra.text.toString()
                 ) ?: Template(
                     name = editName.text.toString().ifEmpty { "模板" },
-                    guid = editGuid.text.toString().ifEmpty { java.util.UUID.randomUUID().toString() },
                     pathCwd = editPath.text.toString().ifEmpty { "/" },
                     chrootView = editChroot.text.toString().takeIf { it.isNotEmpty() },
                     shell = editShell.text.toString().ifEmpty { ShellLocator.findShell() },
                     useSu = checkSu.isChecked,
                     useShizuku = checkShizuku.isChecked,
+                    uid = editUid.text.toString().trim().takeIf { it.isNotEmpty() },
+                    gid = editGid.text.toString().trim().takeIf { it.isNotEmpty() },
                     extraArgs = editExtra.text.toString()
                 )
                 if (template == null) {
@@ -121,7 +126,8 @@ class TemplatesActivity : AppCompatActivity() {
             cwd = template.pathCwd,
             chroot = template.chrootView,
             extraArgs = template.extraArgs,
-            guid = template.guid,
+            uid = template.uid,
+            gid = template.gid,
             templateId = template.id
         )
         manager.addSession(session)

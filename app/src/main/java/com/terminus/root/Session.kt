@@ -12,6 +12,7 @@ data class Session(
     var cwd: String = "/",
     var chroot: String? = null,
     var extraArgs: String = "",
-    var guid: String = UUID.randomUUID().toString(),
+    var uid: String = "",
+    var gid: String = "",
     var templateId: String? = null
 ) : Serializable
