@@ -98,9 +98,11 @@ class TerminalActivity : AppCompatActivity() {
         val existing = terminalSessions[session.id]
         if (existing != null && existing.isRunning) return existing
         if (session.detached && TermBridge.isAlive(this, session.id)) {
+            val attach = TermBridge.attachCommand(this, session.id)
             val t = TerminalSession(
-                TermBridge.attachCommand(this, session.id),
+                attach[0],
                 "/",
+                attach,
                 arrayOf("TERM=xterm-256color"),
                 2000,
                 sessionClient
@@ -174,7 +176,7 @@ class TerminalActivity : AppCompatActivity() {
         session.detached = true
         manager.updateSession(session)
         terminalSessions.remove(session.id)
-        terminalSession?.let { if (it.isRunning) it.finish() }
+        terminalSession?.let { if (it.isRunning) it.finishIfRunning() }
         terminalSession = null
         setupTerminalMode(TermSettings.color(this))
         toast(getString(R.string.detached))
