@@ -75,5 +75,8 @@
     <string name="detach_already">会话已在独立运行</string>
     <string name="detach_failed">脱离失败</string>
     <string name="detach_need_root">需要 Root 权限，请在 KernelSU/Magisk 中授权本应用</string>
+    <string name="default_terminal_name">main</string>
+    <string name="status_running">运行中</string>
+    <string name="status_dead">已结束</string>
     <string name="detached">会话已脱离，将独立运行</string>
 </resources>

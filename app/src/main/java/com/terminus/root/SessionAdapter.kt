@@ -15,12 +15,14 @@ class SessionAdapter(
     private val onDuplicate: (Session) -> Unit,
     private val onClose: (Session) -> Unit,
     private val blocked: (Session) -> Boolean = { false },
-    private val isRunning: (Session) -> Boolean = { false }
+    private val isRunning: (Session) -> Boolean = { false },
+    private val templateName: (Session) -> String = { "" }
 ) : RecyclerView.Adapter<SessionAdapter.SessionViewHolder>() {
     
     class SessionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val textName: TextView = view.findViewById(R.id.textSessionName)
         val textInfo: TextView = view.findViewById(R.id.textSessionInfo)
+        val textTemplate: TextView = view.findViewById(R.id.textTemplate)
         val buttonMenu: ImageButton = view.findViewById(R.id.buttonMenu)
     }
     
@@ -34,24 +36,18 @@ class SessionAdapter(
         val session = sessions[position]
         val isBlocked = blocked(session)
         holder.textName.text = session.name
-        val info = buildString {
-            append(
-                when {
-                    session.useShizuku -> "shizuku"
-                    session.useSu -> "su"
-                    else -> session.shell
-                }
+        val tpl = templateName(session)
+        holder.textTemplate.text = tpl
+        holder.textTemplate.visibility = if (tpl.isEmpty()) View.GONE else View.VISIBLE
+        val info = if (session.detached) {
+            holder.textInfo.context.getString(
+                if (isRunning(session)) R.string.status_running else R.string.status_dead
             )
-            if (session.uid.isNotBlank() || session.gid.isNotBlank()) {
-                append(" | uid:${session.uid.ifBlank { "-" }} gid:${session.gid.ifBlank { "-" }}")
-            }
-            if (session.cwd.isNotEmpty()) append(" | $session.cwd")
-            if (!session.chroot.isNullOrEmpty()) append(" | chroot:$session.chroot")
-            if (session.detached) {
-                append(if (isRunning(session)) " | 运行中" else " | 已结束")
-            }
+        } else {
+            ""
         }
         holder.textInfo.text = info
+        holder.textInfo.visibility = if (info.isEmpty()) View.GONE else View.VISIBLE
         val color = if (isBlocked) {
             holder.textName.context.getColor(R.color.terminal_red)
         } else {

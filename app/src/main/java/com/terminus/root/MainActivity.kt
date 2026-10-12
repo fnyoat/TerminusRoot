@@ -53,7 +53,12 @@ class MainActivity : AppCompatActivity() {
             },
             onClose = { session -> closeSession(session) },
             blocked = { session -> Access.sessionProfileBlocked(session) },
-            isRunning = { session -> runningIds.contains(session.id) }
+            isRunning = { session -> runningIds.contains(session.id) },
+            templateName = { session ->
+                session.templateId?.let { id ->
+                    manager.getTemplates().firstOrNull { it.id == id }?.name
+                }.orEmpty()
+            }
         )
         
         recycler.layoutManager = LinearLayoutManager(this)
@@ -99,7 +104,7 @@ class MainActivity : AppCompatActivity() {
     private fun startDefaultSession(detach: Boolean = false) {
         val template = manager.resolveDefaultTemplate(this)
         val session = Session(
-            name = template?.name ?: "会话-${System.currentTimeMillis() % 10000}",
+            name = getString(R.string.default_terminal_name),
             shell = template?.shell ?: ShellLocator.findShell(),
             useSu = template?.useSu == true,
             useShizuku = template?.useShizuku == true,
@@ -149,7 +154,7 @@ class MainActivity : AppCompatActivity() {
             .setView(view)
             .setPositiveButton(R.string.ok) { _, _ ->
                 val session = Session(
-                    name = editName.text.toString().ifEmpty { "会话-${System.currentTimeMillis() % 10000}" },
+                    name = editName.text.toString().ifEmpty { getString(R.string.default_terminal_name) },
                     cwd = editPath.text.toString().ifEmpty { "/" },
                     chroot = editChroot.text.toString().takeIf { it.isNotEmpty() },
                     shell = editShell.text.toString().ifEmpty { ShellLocator.findShell() },
