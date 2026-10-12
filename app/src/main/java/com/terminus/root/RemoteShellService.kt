@@ -2,6 +2,7 @@ package com.terminus.root
 
 import android.net.LocalSocket
 import android.net.LocalSocketAddress
+import android.os.IBinder
 import android.util.Log
 import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
@@ -15,6 +16,15 @@ class RemoteShellService : IShellService.Stub() {
     private var outputStream: DataOutputStream? = null
     private var callback: IShellCallback? = null
     private val running = AtomicBoolean(false)
+
+    @Volatile
+    private var detached = false
+
+    @Volatile
+    private var deathRecipient: IBinder.DeathRecipient? = null
+
+    @Volatile
+    private var deathBinder: IBinder? = null
 
     private val ptyLock = Any()
     private var ptyMode = false
@@ -85,6 +95,7 @@ class RemoteShellService : IShellService.Stub() {
         synchronized(ptyLock) {
             if (ptyMode && running.get() && process != null) {
                 callback = cb
+                linkCallbackDeath(cb)
                 val replay = ptyBuffer.toByteArray()
                 if (replay.isNotEmpty()) {
                     try {
@@ -109,6 +120,7 @@ class RemoteShellService : IShellService.Stub() {
             ptyBuffer = ByteArrayOutputStream()
         }
         callback = cb
+        linkCallbackDeath(cb)
 
         val exePath: String
         try {
@@ -299,7 +311,45 @@ class RemoteShellService : IShellService.Stub() {
         destroyInternal()
     }
 
+    override fun setDetached(detached: Boolean) {
+        this.detached = detached
+    }
+
+    private fun linkCallbackDeath(cb: IShellCallback?) {
+        unlinkCallbackDeath()
+        val binder = cb?.asBinder() ?: return
+        val recipient = IBinder.DeathRecipient {
+            if (!detached) {
+                destroyInternal()
+                android.os.Process.killProcess(android.os.Process.myPid())
+            } else {
+                callback = null
+            }
+        }
+        try {
+            binder.linkToDeath(recipient, 0)
+            deathRecipient = recipient
+            deathBinder = binder
+        } catch (t: Throwable) {
+            Log.e(TAG, "linkToDeath failed", t)
+        }
+    }
+
+    private fun unlinkCallbackDeath() {
+        val binder = deathBinder
+        val recipient = deathRecipient
+        if (binder != null && recipient != null) {
+            try {
+                binder.unlinkToDeath(recipient, 0)
+            } catch (_: Throwable) {
+            }
+        }
+        deathRecipient = null
+        deathBinder = null
+    }
+
     private fun destroyInternal() {
+        unlinkCallbackDeath()
         val wasPty = ptyMode
         running.set(false)
         if (wasPty) {
@@ -331,6 +381,7 @@ class RemoteShellService : IShellService.Stub() {
         process = null
         outputStream = null
         callback = null
+        detached = false
         synchronized(ptyLock) {
             ptyMode = false
             ptyEnded = false

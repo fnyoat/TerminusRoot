@@ -23,6 +23,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var textColorSummary: TextView
     private lateinit var viewColorSwatch: View
     private lateinit var textDefaultPwd: TextView
+    private lateinit var textPersist: TextView
     private lateinit var textAllFiles: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +36,7 @@ class SettingsActivity : AppCompatActivity() {
         textColorSummary = findViewById(R.id.textColorSummary)
         viewColorSwatch = findViewById(R.id.viewColorSwatch)
         textDefaultPwd = findViewById(R.id.textDefaultPwd)
+        textPersist = findViewById(R.id.textPersist)
         textAllFiles = findViewById(R.id.textAllFiles)
         findViewById<TextView>(R.id.headerTitle).setTextColor(TermSettings.color(this))
 
@@ -47,6 +49,7 @@ class SettingsActivity : AppCompatActivity() {
         }
         findViewById<View>(R.id.rowColor).setOnClickListener { showColorDialog() }
         findViewById<View>(R.id.rowDefaultPwd).setOnClickListener { showDefaultPwdDialog() }
+        findViewById<View>(R.id.rowPersist).setOnClickListener { showPersistDialog() }
         findViewById<View>(R.id.rowAllFiles).setOnClickListener { requestAllFilesAccess() }
     }
 
@@ -63,6 +66,9 @@ class SettingsActivity : AppCompatActivity() {
         textDefaultTemplate.text = defaultTemplateSummary()
         textDefaultPwd.text = TermSettings.defaultPwd(this)
             .ifEmpty { getString(R.string.pwd_system_default) }
+        textPersist.text = getString(
+            if (TermSettings.sessionPersist(this)) R.string.persist_keep else R.string.persist_follow
+        )
         textAllFiles.text = getString(
             if (hasAllFilesAccess()) R.string.all_files_granted else R.string.all_files_denied
         )
@@ -136,6 +142,22 @@ class SettingsActivity : AppCompatActivity() {
             .setTitle(R.string.select_color)
             .setSingleChoiceItems(names, selectedIndex) { dialog, which ->
                 TermSettings.setColor(this, TermSettings.PRESETS[which].color)
+                dialog.dismiss()
+                refresh()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showPersistDialog() {
+        val options = arrayOf(
+            getString(R.string.persist_keep),
+            getString(R.string.persist_follow)
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.select_session_persist)
+            .setSingleChoiceItems(options, if (TermSettings.sessionPersist(this)) 0 else 1) { dialog, which ->
+                TermSettings.setSessionPersist(this, which == 0)
                 dialog.dismiss()
                 refresh()
             }

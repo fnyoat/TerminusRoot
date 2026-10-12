@@ -11,4 +11,5 @@ interface IShellService {
     void startPty(in byte[] bin, String cwd, int rows, int cols, String shell, in String[] args, in String[] env, IShellCallback callback) = 5;
     void writeData(in byte[] data) = 6;
     void resize(int rows, int cols) = 7;
+    void setDetached(boolean detached) = 8;
 }

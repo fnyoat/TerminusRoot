@@ -80,4 +80,8 @@
     <string name="status_running">运行中</string>
     <string name="status_dead">已结束</string>
     <string name="detached">会话已脱离，将独立运行</string>
+    <string name="session_persist">会话常驻</string>
+    <string name="select_session_persist">退出应用后，Shell 级会话如何处理</string>
+    <string name="persist_keep">常驻后台独立运行</string>
+    <string name="persist_follow">跟随应用退出即结束</string>
 </resources>

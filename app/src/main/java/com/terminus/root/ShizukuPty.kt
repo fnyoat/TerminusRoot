@@ -85,6 +85,7 @@ class ShizukuPty(context: Context, private val session: Session) {
                     buildEnv(),
                     callback
                 )
+                svc.setDetached(session.detached || TermSettings.sessionPersist(appContext))
                 if (pendingRows > 0 && pendingCols > 0) {
                     svc.resize(pendingRows, pendingCols)
                 }
@@ -101,7 +102,7 @@ class ShizukuPty(context: Context, private val session: Session) {
     private val userServiceArgs =
         Shizuku.UserServiceArgs(ComponentName(appContext, RemoteShellService::class.java))
             .daemon(true)
-            .version(2)
+            .version(3)
             .tag("pty_${session.id}")
             .processNameSuffix("pty_${session.id.filter { it.isLetterOrDigit() }.take(20)}")
 
@@ -217,6 +218,13 @@ class ShizukuPty(context: Context, private val session: Session) {
         return map.map { "${it.key}=${it.value}" }.toTypedArray()
     }
 
+    fun markDetached() {
+        try {
+            service?.setDetached(true)
+        } catch (_: Throwable) {
+        }
+    }
+
     fun close() {
         running = false
         synchronized(lock) {
@@ -250,7 +258,7 @@ class ShizukuPty(context: Context, private val session: Session) {
                 ComponentName(context, RemoteShellService::class.java)
             )
                 .daemon(true)
-                .version(2)
+                .version(3)
                 .tag("pty_${session.id}")
                 .processNameSuffix("pty_${session.id.filter { it.isLetterOrDigit() }.take(20)}")
             try {

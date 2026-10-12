@@ -14,6 +14,7 @@ object TermSettings {
     private const val KEY_DEFAULT_PWD = "default_pwd"
     private const val KEY_QUICK = "quick_entries"
     private const val KEY_CURSOR_STYLE = "cursor_style"
+    private const val KEY_PERSIST = "session_persist"
 
     const val DEFAULT_TEMPLATE_AUTO = "auto"
 
@@ -68,6 +69,13 @@ object TermSettings {
 
     fun setCursorStyle(context: Context, style: Int) {
         prefs(context).edit { putInt(KEY_CURSOR_STYLE, style) }
+    }
+
+    fun sessionPersist(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_PERSIST, true)
+
+    fun setSessionPersist(context: Context, persist: Boolean) {
+        prefs(context).edit { putBoolean(KEY_PERSIST, persist) }
     }
 
     fun defaultPwd(context: Context): String =

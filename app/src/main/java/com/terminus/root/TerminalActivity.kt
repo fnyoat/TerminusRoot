@@ -271,6 +271,7 @@ class TerminalActivity : AppCompatActivity() {
         session.detached = true
         session.detachedVia = "shizuku"
         manager.updateSession(session)
+        synchronized(shizukuPtys) { shizukuPtys[session.id] }?.markDetached()
         terminalSessions.remove(session.id)
         terminalSession?.let { if (it.isRunning) it.finishIfRunning() }
         terminalSession = null
