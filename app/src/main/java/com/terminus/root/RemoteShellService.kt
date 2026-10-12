@@ -249,15 +249,24 @@ class RemoteShellService : IShellService.Stub() {
 
     override fun resize(rows: Int, cols: Int) {
         val path = ctrlPath ?: return
-        try {
-            val s = LocalSocket()
-            s.connect(LocalSocketAddress(path, LocalSocketAddress.Namespace.FILESYSTEM))
-            s.outputStream.write("$rows $cols\n".toByteArray())
-            s.outputStream.flush()
-            s.close()
-        } catch (t: Throwable) {
-            Log.e(TAG, "resize failed", t)
+        var attempt = 0
+        while (attempt < 40) {
+            try {
+                val s = LocalSocket()
+                s.connect(LocalSocketAddress(path, LocalSocketAddress.Namespace.FILESYSTEM))
+                s.outputStream.write("$rows $cols\n".toByteArray())
+                s.outputStream.flush()
+                s.close()
+                return
+            } catch (t: Throwable) {
+                attempt++
+                try {
+                    Thread.sleep(50)
+                } catch (_: InterruptedException) {
+                }
+            }
         }
+        Log.e(TAG, "resize failed after retries")
     }
 
     override fun waitFor(): Int {
