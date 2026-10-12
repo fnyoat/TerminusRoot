@@ -89,6 +89,19 @@ static void set_win(int fd, int rows, int cols) {
     ioctl(fd, TIOCSWINSZ, &ws);
 }
 
+static void try_escape_cgroup(void) {
+    if (geteuid() != 0) return;
+    int fd = open("/sys/fs/cgroup/cgroup.procs", O_WRONLY);
+    if (fd < 0) return;
+    char buf[32];
+    int n = snprintf(buf, sizeof(buf), "%d\n", (int) getpid());
+    if (n > 0) {
+        ssize_t ignored = write(fd, buf, (size_t) n);
+        (void) ignored;
+    }
+    close(fd);
+}
+
 static int cmd_daemon(int argc, char **argv) {
     if (argc < 5) {
         fprintf(stderr, "daemon <sock> <cwd> <rows> <cols> <shell> [args...]\n");
@@ -109,6 +122,7 @@ static int cmd_daemon(int argc, char **argv) {
     signal(SIGHUP, SIG_IGN);
     signal(SIGPIPE, SIG_IGN);
     setsid();
+    try_escape_cgroup();
 
     int master;
     char slavename[128];

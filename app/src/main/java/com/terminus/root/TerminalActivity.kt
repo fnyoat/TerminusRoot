@@ -129,6 +129,10 @@ class TerminalActivity : AppCompatActivity() {
             toast(getString(R.string.detach_unavailable))
             return
         }
+        if (!Access.suAvailable()) {
+            toast(getString(R.string.detach_need_root))
+            return
+        }
         if (session.detached && TermBridge.isAlive(this, session.id)) {
             toast(getString(R.string.detach_already))
             return
@@ -154,18 +158,28 @@ class TerminalActivity : AppCompatActivity() {
         }
         envMap["TERM"] = "xterm-256color"
 
-        val launch = buildLaunchCommand()
-        val daemonCwd = if (session.useSu || !session.chroot.isNullOrEmpty()) "/" else cwd
+        val shell = if (session.chroot.isNullOrEmpty()) ShellLocator.resolve(session.shell) else session.shell
+        val argv = mutableListOf<String>()
+        if (session.chroot.isNullOrEmpty()) {
+            argv += shell
+        } else {
+            argv += "chroot"
+            argv += session.chroot!!
+            argv += shell
+        }
+        argv += splitArgs(session.extraArgs)
+
         val ok = TermBridge.launchDaemon(
-            this, session.id, launch.second, daemonCwd,
-            envMap.map { "${it.key}=${it.value}" }.toTypedArray()
+            this, session.id, argv.toTypedArray(), cwd,
+            envMap.map { "${it.key}=${it.value}" }.toTypedArray(),
+            useRoot = true
         )
         if (!ok) {
             toast(getString(R.string.detach_failed))
             return
         }
         var alive = false
-        for (i in 0 until 25) {
+        for (i in 0 until 40) {
             if (TermBridge.isAlive(this, session.id)) {
                 alive = true
                 break

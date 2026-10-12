@@ -23,6 +23,8 @@ object Access {
         return testShell("su 0 id")
     }
 
+    fun suPath(): String = SU_PATHS.firstOrNull { File(it).exists() } ?: "su"
+
     fun shizukuReady(): Boolean = try {
         ShizukuHelper.isAvailable() && ShizukuHelper.hasPermission()
     } catch (t: Throwable) {
