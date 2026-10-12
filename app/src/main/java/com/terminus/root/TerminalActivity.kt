@@ -9,9 +9,7 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
-import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.EditText
 import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
@@ -27,22 +25,17 @@ import java.io.File
 
 private const val TAG = "TerminalActivity"
 private val terminalSessions = HashMap<String, TerminalSession>()
+internal val shizukuPtys = HashMap<String, ShizukuPty>()
 private var currentTerminal: TerminalActivity? = null
 private var currentCursorStyle = TermSettings.CURSOR_BLOCK
 
 class TerminalActivity : AppCompatActivity() {
-    private lateinit var textOutput: TextView
-    private lateinit var editCommand: EditText
     private lateinit var scrollView: ScrollView
     lateinit var termView: TerminalView
     private lateinit var layoutInput: View
-    private var executor: TerminalExecutor? = null
     private lateinit var session: Session
     private lateinit var manager: SessionManager
-    private val shizukuPtys = HashMap<String, ShizukuPty>()
     private var terminalSession: TerminalSession? = null
-    private var permissionFlowStarted = false
-    private var terminalStarted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,8 +45,6 @@ class TerminalActivity : AppCompatActivity() {
         manager = SessionManager(this)
         InsetsUtil.apply(this)
 
-        textOutput = findViewById(R.id.textOutput)
-        editCommand = findViewById(R.id.editCommand)
         scrollView = findViewById(R.id.scrollView)
         termView = findViewById(R.id.termView)
         layoutInput = findViewById(R.id.layoutInput)
@@ -68,15 +59,9 @@ class TerminalActivity : AppCompatActivity() {
         linkDetach.imageTintList = ColorStateList.valueOf(color)
         linkDetach.setOnClickListener { detachSession() }
 
-        if (session.useShizuku) {
-            linkQuick.visibility = View.GONE
-            linkDetach.visibility = View.GONE
-            setupShizukuMode(color)
-        } else {
-            setupTerminalMode(color)
-            if (intent.getBooleanExtra("auto_detach", false)) {
-                termView.postDelayed({ detachSession() }, 900)
-            }
+        setupTerminalMode(color)
+        if (intent.getBooleanExtra("auto_detach", false)) {
+            termView.postDelayed({ detachSession() }, 900)
         }
     }
 
@@ -88,6 +73,11 @@ class TerminalActivity : AppCompatActivity() {
         termView.setTerminalViewClient(viewClient)
         termView.setTextSize(TermSettings.fontSize(this))
 
+        if (terminalSession != null) return
+        if (session.useShizuku || session.detachedVia == "shizuku") {
+            if (!ensureShizuku()) return
+        }
+
         val terminal = obtainSession()
         terminalSession = terminal
         termView.attachSession(terminal)
@@ -98,12 +88,32 @@ class TerminalActivity : AppCompatActivity() {
         termView.requestFocus()
     }
 
+    private fun ensureShizuku(): Boolean {
+        ShizukuHelper.init()
+        if (ShizukuHelper.isAvailable() && ShizukuHelper.hasPermission()) return true
+        ShizukuHelper.onPermissionResult = { granted ->
+            runOnUiThread {
+                if (granted) setupTerminalMode(TermSettings.color(this))
+                else toast(getString(R.string.detach_need_shizuku))
+            }
+        }
+        if (!ShizukuHelper.isAvailable()) {
+            toast(getString(R.string.detach_need_root))
+            return false
+        }
+        if (!ShizukuHelper.shouldShowRationale()) ShizukuHelper.requestPermission()
+        toast(getString(R.string.detach_need_shizuku))
+        return false
+    }
+
     private fun obtainSession(): TerminalSession {
         val existing = terminalSessions[session.id]
         if (existing != null && existing.isRunning) return existing
-        if (session.detached && session.detachedVia == "shizuku") {
-            val pty = shizukuPtys.getOrPut(session.id) {
-                ShizukuPty(applicationContext, session).also { it.start() }
+        if (session.useShizuku || (session.detached && session.detachedVia == "shizuku")) {
+            val pty = synchronized(shizukuPtys) {
+                shizukuPtys.getOrPut(session.id) {
+                    ShizukuPty(applicationContext, session).also { it.start() }
+                }
             }
             val cmd = arrayOf(TermBridge.binPath(this), "attach", "@${pty.socketName}")
             val t = TerminalSession(
@@ -144,6 +154,10 @@ class TerminalActivity : AppCompatActivity() {
     private fun detachSession() {
         if (!TermBridge.available(this)) {
             toast(getString(R.string.detach_unavailable))
+            return
+        }
+        if (session.useShizuku) {
+            detachViaShizuku()
             return
         }
         ShizukuHelper.init()
@@ -231,6 +245,31 @@ class TerminalActivity : AppCompatActivity() {
         }
         session.detached = true
         session.detachedVia = "su"
+        manager.updateSession(session)
+        terminalSessions.remove(session.id)
+        terminalSession?.let { if (it.isRunning) it.finishIfRunning() }
+        terminalSession = null
+        setupTerminalMode(TermSettings.color(this))
+        toast(getString(R.string.detached))
+    }
+
+    private fun detachViaShizuku() {
+        ShizukuHelper.init()
+        if (!(ShizukuHelper.isAvailable() && ShizukuHelper.hasPermission())) {
+            if (ShizukuHelper.isAvailable()) {
+                ShizukuHelper.requestPermission()
+                toast(getString(R.string.detach_need_shizuku))
+            } else {
+                toast(getString(R.string.detach_need_root))
+            }
+            return
+        }
+        if (session.detached) {
+            toast(getString(R.string.detach_already))
+            return
+        }
+        session.detached = true
+        session.detachedVia = "shizuku"
         manager.updateSession(session)
         terminalSessions.remove(session.id)
         terminalSession?.let { if (it.isRunning) it.finishIfRunning() }
@@ -368,105 +407,6 @@ class TerminalActivity : AppCompatActivity() {
         return Triple(argv[0], argv.toTypedArray(), cwd)
     }
 
-    private fun setupShizukuMode(color: Int) {
-        termView.visibility = View.GONE
-        scrollView.visibility = View.VISIBLE
-        layoutInput.visibility = View.VISIBLE
-        textOutput.setTextColor(color)
-        editCommand.setTextColor(color)
-        editCommand.setHintTextColor(color and 0x66FFFFFF)
-
-        ShizukuHelper.init()
-        ShizukuHelper.onPermissionResult = { granted ->
-            runOnUiThread {
-                if (granted) {
-                    append("已获得 Shizuku 权限\n")
-                    startExecutor()
-                } else {
-                    append("Shizuku 权限被拒绝\n")
-                }
-            }
-        }
-        ShizukuHelper.onBinderStateChanged = { available ->
-            runOnUiThread {
-                if (available && !terminalStarted) {
-                    ensureShizukuReady()
-                }
-            }
-        }
-
-        val exec = TerminalExecutor(this, session)
-        exec.onOutput = { output -> append(output) }
-        exec.onError = { error -> append(error) }
-        executor = exec
-
-        printWelcome()
-        ensureShizukuReady()
-
-        editCommand.setOnEditorActionListener { _, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_SEND ||
-                (event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)) {
-                val command = editCommand.text.toString()
-                if (command.isNotEmpty()) {
-                    exec.execute(command)
-                    append("$command\n")
-                    editCommand.setText("")
-                }
-                true
-            } else {
-                false
-            }
-        }
-    }
-
-    private fun printWelcome() {
-        append("$TERMINUS_BANNER\n")
-        append("会话: ${session.name}\n")
-        append("Shell: ${session.shell}\n")
-        if (session.uid.isNotBlank() || session.gid.isNotBlank()) {
-            append("UID/GID: ${session.uid.ifBlank { "-" }}/${session.gid.ifBlank { "-" }}\n")
-        }
-        if (session.useSu) append("提权: Root (su)\n")
-        if (session.useShizuku) append("提权: Shizuku\n")
-        append("输入命令执行，输入 exit 退出会话\n")
-        append("$TERMINUS_BANNER\n")
-    }
-
-    private fun ensureShizukuReady() {
-        if (ShizukuHelper.hasPermission()) {
-            startExecutor()
-            return
-        }
-        if (!ShizukuHelper.isAvailable()) {
-            append("Shizuku 未运行，请先启动 Shizuku 后返回本页\n")
-            return
-        }
-        if (ShizukuHelper.shouldShowRationale()) {
-            append("Shizuku 权限已被拒绝，请在 Shizuku 应用中重新授权\n")
-            return
-        }
-        if (!permissionFlowStarted) {
-            permissionFlowStarted = true
-            append("正在请求 Shizuku 权限...\n")
-            ShizukuHelper.requestPermission()
-        }
-    }
-
-    private fun startExecutor() {
-        if (terminalStarted) return
-        terminalStarted = true
-        executor?.start()
-    }
-
-    private fun append(text: String) {
-        runOnUiThread {
-            textOutput.append(text)
-            scrollView.post {
-                scrollView.fullScroll(ScrollView.FOCUS_DOWN)
-            }
-        }
-    }
-
     private val sessionClient = SessionClient
 
     private val viewClient = ViewClient
@@ -488,7 +428,7 @@ class TerminalActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         currentTerminal = this
-        if (!session.useShizuku) termView.onScreenUpdated()
+        termView.onScreenUpdated()
     }
 
     override fun onPause() {
@@ -503,7 +443,6 @@ class TerminalActivity : AppCompatActivity() {
         if (currentTerminal === this) currentTerminal = null
         terminalSession?.let { if (!it.isRunning) terminalSessions.remove(session.id) }
         terminalSession = null
-        executor?.stop()
     }
 
     private fun buildEnv(): Array<String> {
@@ -550,7 +489,6 @@ class TerminalActivity : AppCompatActivity() {
     private fun shQuote(path: String): String = "'" + path.replace("'", "'\\''") + "'"
 
     companion object {
-        private const val TERMINUS_BANNER = "=========================="
         private const val SHELL_RC = """
 [ -r /system/etc/mkshrc ] && . /system/etc/mkshrc
 alias ls='ls --color=auto'

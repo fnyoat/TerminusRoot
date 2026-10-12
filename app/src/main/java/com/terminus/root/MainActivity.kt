@@ -92,6 +92,7 @@ class MainActivity : AppCompatActivity() {
             val ids = mutableSetOf<String>()
             for (s in sessions) {
                 if (s.detached && TermBridge.isAlive(this, s.id)) ids.add(s.id)
+                else if (shizukuPtys.containsKey(s.id)) ids.add(s.id)
             }
             runOnUiThread {
                 runningIds.clear()
@@ -193,9 +194,13 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.close)
             .setMessage(R.string.close_session_confirm)
             .setPositiveButton(R.string.ok) { _, _ ->
-                if (session.detached) {
-                    if (session.detachedVia == "shizuku") ShizukuPty.remove(this, session)
-                    else TermBridge.kill(this, session.id)
+                val live = shizukuPtys.remove(session.id)
+                if (live != null) {
+                    live.close()
+                } else if (session.useShizuku || session.detachedVia == "shizuku") {
+                    ShizukuPty.remove(this, session)
+                } else if (session.detached) {
+                    TermBridge.kill(this, session.id)
                 }
                 manager.removeSession(session)
                 updateList()
