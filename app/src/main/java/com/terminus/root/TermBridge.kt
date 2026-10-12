@@ -2,6 +2,7 @@ package com.terminus.root
 
 import android.content.Context
 import java.io.File
+import rikka.shizuku.Shizuku
 
 object TermBridge {
     fun binPath(context: Context): String =

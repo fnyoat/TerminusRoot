@@ -413,15 +413,168 @@ static int cmd_kill(int argc, char **argv) {
     return 0;
 }
 
+static int cmd_pty(int argc, char **argv) {
+    /* pty <cwd> <rows> <cols> <shell> [args...]
+     * Bridges a fresh PTY to stdin/stdout so a privileged host process (e.g. a
+     * Shizuku user service) can relay it over binder. Optional control socket
+     * path is taken from $TERMBRIDGE_CTRL; it accepts "rows cols\n" to resize.
+     */
+    if (argc < 6) {
+        fprintf(stderr, "pty <cwd> <rows> <cols> <shell> [args...]\n");
+        return 2;
+    }
+    const char *cwd = argv[2];
+    int rows = atoi(argv[3]);
+    int cols = atoi(argv[4]);
+    int shell_idx = 5;
+    if (rows <= 0) rows = 24;
+    if (cols <= 0) cols = 80;
+
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGHUP, SIG_IGN);
+    signal(SIGCHLD, SIG_IGN);
+
+    int master;
+    char slavename[128];
+    if (open_pty(&master, slavename, sizeof(slavename)) < 0) {
+        fprintf(stderr, "open_pty failed: %s\n", strerror(errno));
+        return 3;
+    }
+
+    pid_t child = fork();
+    if (child < 0) {
+        fprintf(stderr, "fork failed\n");
+        return 3;
+    }
+    if (child == 0) {
+        setsid();
+        int slave = open(slavename, O_RDWR);
+        if (slave < 0) _exit(4);
+        ioctl(slave, TIOCSCTTY, 0);
+        dup2(slave, 0);
+        dup2(slave, 1);
+        dup2(slave, 2);
+        if (slave > 2) close(slave);
+        close(master);
+        if (cwd && cwd[0]) chdir(cwd);
+        execv(argv[shell_idx], &argv[shell_idx]);
+        _exit(127);
+    }
+
+    set_win(master, rows, cols);
+
+    int ctrl = -1;
+    const char *ctrlpath = getenv("TERMBRIDGE_CTRL");
+    if (ctrlpath && ctrlpath[0]) {
+        ctrl = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (ctrl >= 0) {
+            struct sockaddr_un addr;
+            memset(&addr, 0, sizeof(addr));
+            addr.sun_family = AF_UNIX;
+            strncpy(addr.sun_path, ctrlpath, sizeof(addr.sun_path) - 1);
+            unlink(ctrlpath);
+            if (bind(ctrl, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+                close(ctrl);
+                ctrl = -1;
+            } else {
+                chmod(ctrlpath, 0600);
+                listen(ctrl, 2);
+            }
+        }
+    }
+
+    int InEof = 0;
+    for (;;) {
+        struct pollfd pfd[3];
+        int nfd = 0;
+        int mi = nfd;
+        pfd[nfd].fd = master;
+        pfd[nfd].events = POLLIN;
+        pfd[nfd].revents = 0;
+        nfd++;
+        int ii = -1;
+        if (!InEof) {
+            ii = nfd;
+            pfd[nfd].fd = 0;
+            pfd[nfd].events = POLLIN;
+            pfd[nfd].revents = 0;
+            nfd++;
+        }
+        int ci = -1;
+        if (ctrl >= 0) {
+            ci = nfd;
+            pfd[nfd].fd = ctrl;
+            pfd[nfd].events = POLLIN;
+            pfd[nfd].revents = 0;
+            nfd++;
+        }
+
+        int r = poll(pfd, (nfds_t) nfd, -1);
+        if (r < 0) {
+            if (errno == EINTR) {
+                if (g_winch) {
+                    g_winch = 0;
+                    ioctl(master, TIOCGWINSZ, &g_ws);
+                }
+                continue;
+            }
+            break;
+        }
+
+        if (pfd[mi].revents & POLLIN) {
+            char buf[8192];
+            ssize_t n = read(master, buf, sizeof(buf));
+            if (n <= 0) break;
+            if (write_all(1, buf, (size_t) n) < 0) break;
+        }
+        if (pfd[mi].revents & (POLLHUP | POLLERR | POLLNVAL)) break;
+
+        if (ii >= 0 && (pfd[ii].revents & (POLLIN))) {
+            char buf[8192];
+            ssize_t n = read(0, buf, sizeof(buf));
+            if (n <= 0) {
+                InEof = 1;
+            } else if (write_all(master, buf, (size_t) n) < 0) {
+                break;
+            }
+        } else if (ii >= 0 && (pfd[ii].revents & (POLLHUP | POLLERR | POLLNVAL))) {
+            InEof = 1;
+        }
+
+        if (ci >= 0 && (pfd[ci].revents & POLLIN)) {
+            int conn = accept(ctrl, NULL, NULL);
+            if (conn >= 0) {
+                char cb[64];
+                ssize_t n = read(conn, cb, sizeof(cb) - 1);
+                if (n > 0) {
+                    cb[n] = '\0';
+                    int rr = 0, cc = 0;
+                    if (sscanf(cb, "%d %d", &rr, &cc) == 2 && rr > 0 && cc > 0) {
+                        set_win(master, rr, cc);
+                    }
+                }
+                close(conn);
+            }
+        }
+    }
+
+    kill(child, SIGHUP);
+    kill(child, SIGKILL);
+    if (ctrlpath && ctrlpath[0]) unlink(ctrlpath);
+    if (ctrl >= 0) close(ctrl);
+    return 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fprintf(stderr, "usage: termbridge <daemon|attach|probe> ...\n");
+        fprintf(stderr, "usage: termbridge <daemon|attach|probe|kill|pty> ...\n");
         return 2;
     }
     if (strcmp(argv[1], "daemon") == 0) return cmd_daemon(argc, argv);
     if (strcmp(argv[1], "attach") == 0) return cmd_attach(argc, argv);
     if (strcmp(argv[1], "probe") == 0) return cmd_probe(argc, argv);
     if (strcmp(argv[1], "kill") == 0) return cmd_kill(argc, argv);
+    if (strcmp(argv[1], "pty") == 0) return cmd_pty(argc, argv);
     fprintf(stderr, "unknown mode: %s\n", argv[1]);
     return 2;
 }

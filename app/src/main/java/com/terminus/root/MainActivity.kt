@@ -193,7 +193,10 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.close)
             .setMessage(R.string.close_session_confirm)
             .setPositiveButton(R.string.ok) { _, _ ->
-                if (session.detached) TermBridge.kill(this, session.id)
+                if (session.detached) {
+                    if (session.detachedVia == "shizuku") ShizukuPty.remove(this, session)
+                    else TermBridge.kill(this, session.id)
+                }
                 manager.removeSession(session)
                 updateList()
             }

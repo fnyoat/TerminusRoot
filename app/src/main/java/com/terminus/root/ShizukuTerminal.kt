@@ -23,6 +23,9 @@ class ShizukuTerminal(
         override fun onExit(exitCode: Int) {
             onOutput("\n[进程已退出，状态码 $exitCode]\n")
         }
+
+        override fun onData(data: ByteArray?) {
+        }
     }
 
     private val connection = object : ServiceConnection {

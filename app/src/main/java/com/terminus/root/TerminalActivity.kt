@@ -39,6 +39,7 @@ class TerminalActivity : AppCompatActivity() {
     private var executor: TerminalExecutor? = null
     private lateinit var session: Session
     private lateinit var manager: SessionManager
+    private val shizukuPtys = HashMap<String, ShizukuPty>()
     private var terminalSession: TerminalSession? = null
     private var permissionFlowStarted = false
     private var terminalStarted = false
@@ -100,6 +101,22 @@ class TerminalActivity : AppCompatActivity() {
     private fun obtainSession(): TerminalSession {
         val existing = terminalSessions[session.id]
         if (existing != null && existing.isRunning) return existing
+        if (session.detached && session.detachedVia == "shizuku") {
+            val pty = shizukuPtys.getOrPut(session.id) {
+                ShizukuPty(applicationContext, session).also { it.start() }
+            }
+            val cmd = arrayOf(TermBridge.binPath(this), "attach", pty.socketPath)
+            val t = TerminalSession(
+                cmd[0],
+                "/",
+                cmd,
+                arrayOf("TERM=xterm-256color"),
+                2000,
+                sessionClient
+            )
+            terminalSessions[session.id] = t
+            return t
+        }
         if (session.detached && TermBridge.isAlive(this, session.id)) {
             val attach = TermBridge.attachCommand(this, session.id)
             val t = TerminalSession(
@@ -129,11 +146,15 @@ class TerminalActivity : AppCompatActivity() {
             toast(getString(R.string.detach_unavailable))
             return
         }
-        if (!Access.suAvailable()) {
+        val canSu = Access.suAvailable()
+        val canShizuku = ShizukuHelper.isAvailable() && ShizukuHelper.hasPermission()
+        if (!canSu && !canShizuku) {
             toast(getString(R.string.detach_need_root))
             return
         }
-        if (session.detached && TermBridge.isAlive(this, session.id)) {
+        if (session.detached &&
+            (TermBridge.isAlive(this, session.id) || shizukuPtys.containsKey(session.id))
+        ) {
             toast(getString(R.string.detach_already))
             return
         }
@@ -169,6 +190,18 @@ class TerminalActivity : AppCompatActivity() {
         }
         argv += splitArgs(session.extraArgs)
 
+        if (!canSu) {
+            session.detached = true
+            session.detachedVia = "shizuku"
+            manager.updateSession(session)
+            terminalSessions.remove(session.id)
+            terminalSession?.let { if (it.isRunning) it.finishIfRunning() }
+            terminalSession = null
+            setupTerminalMode(TermSettings.color(this))
+            toast(getString(R.string.detached))
+            return
+        }
+
         val ok = TermBridge.launchDaemon(
             this, session.id, argv.toTypedArray(), cwd,
             envMap.map { "${it.key}=${it.value}" }.toTypedArray(),
@@ -191,6 +224,7 @@ class TerminalActivity : AppCompatActivity() {
             return
         }
         session.detached = true
+        session.detachedVia = "su"
         manager.updateSession(session)
         terminalSessions.remove(session.id)
         terminalSession?.let { if (it.isRunning) it.finishIfRunning() }

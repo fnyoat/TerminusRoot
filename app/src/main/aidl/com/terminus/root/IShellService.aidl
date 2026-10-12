@@ -8,4 +8,7 @@ interface IShellService {
     int waitFor() = 3;
     void exit() = 4;
     void destroy() = 16777114;
+    void startPty(in byte[] bin, String cwd, int rows, int cols, String shell, in String[] args, in String[] env, IShellCallback callback) = 5;
+    void writeData(in byte[] data) = 6;
+    void resize(int rows, int cols) = 7;
 }
