@@ -146,10 +146,16 @@ class TerminalActivity : AppCompatActivity() {
             toast(getString(R.string.detach_unavailable))
             return
         }
+        ShizukuHelper.init()
         val canSu = Access.suAvailable()
         val canShizuku = ShizukuHelper.isAvailable() && ShizukuHelper.hasPermission()
         if (!canSu && !canShizuku) {
-            toast(getString(R.string.detach_need_root))
+            if (ShizukuHelper.isAvailable()) {
+                ShizukuHelper.requestPermission()
+                toast(getString(R.string.detach_need_shizuku))
+            } else {
+                toast(getString(R.string.detach_need_root))
+            }
             return
         }
         if (session.detached &&
