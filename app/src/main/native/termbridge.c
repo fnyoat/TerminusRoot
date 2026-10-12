@@ -168,6 +168,18 @@ static int cmd_daemon(int argc, char **argv) {
         return 3;
     }
     chmod(sock, 0600);
+    {
+        char dirbuf[256];
+        snprintf(dirbuf, sizeof(dirbuf), "%s", sock);
+        char *slash = strrchr(dirbuf, '/');
+        if (slash) {
+            *slash = '\0';
+            struct stat dst;
+            if (stat(dirbuf, &dst) == 0) {
+                chown(sock, dst.st_uid, dst.st_gid);
+            }
+        }
+    }
     listen(lfd, 4);
 
     char pidpath[256];
@@ -176,6 +188,18 @@ static int cmd_daemon(int argc, char **argv) {
     if (pf) {
         fprintf(pf, "%d\n", (int) getpid());
         fclose(pf);
+    }
+    {
+        char dirbuf[256];
+        snprintf(dirbuf, sizeof(dirbuf), "%s", sock);
+        char *slash = strrchr(dirbuf, '/');
+        if (slash) {
+            *slash = '\0';
+            struct stat dst;
+            if (stat(dirbuf, &dst) == 0) {
+                chown(pidpath, dst.st_uid, dst.st_gid);
+            }
+        }
     }
 
     int cfd = -1;
