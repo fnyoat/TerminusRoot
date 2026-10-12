@@ -261,12 +261,18 @@ class ShizukuPty(context: Context, private val session: Session) {
         }
 
         fun isRunning(context: Context, session: Session): Boolean {
-            if (!Shizuku.pingBinder()) return false
-            return try {
-                Shizuku.peekUserService(argsFor(context, session), probeConn) >= 0
-            } catch (_: Throwable) {
-                false
+            if (!Shizuku.pingBinder()) {
+                Log.d(TAG, "peek ${session.id} -> binder down")
+                return false
             }
+            val res = try {
+                Shizuku.peekUserService(argsFor(context, session), probeConn)
+            } catch (t: Throwable) {
+                Log.d(TAG, "peek ${session.id} -> threw ${t}")
+                return false
+            }
+            Log.d(TAG, "peek ${session.id} -> $res")
+            return res >= 0
         }
 
         fun remove(context: Context, session: Session) {
