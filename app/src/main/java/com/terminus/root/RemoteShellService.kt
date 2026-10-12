@@ -113,7 +113,9 @@ class RemoteShellService : IShellService.Stub() {
             }
         }
 
+        val keepDetached = detached
         destroyInternal()
+        detached = keepDetached
         synchronized(ptyLock) {
             ptyMode = true
             ptyEnded = false
@@ -386,6 +388,12 @@ class RemoteShellService : IShellService.Stub() {
             ptyMode = false
             ptyEnded = false
             ctrlPath = null
+            binPath?.let { path ->
+                try {
+                    File(path).delete()
+                } catch (_: Throwable) {
+                }
+            }
             binPath = null
             ptyBuffer = ByteArrayOutputStream()
         }

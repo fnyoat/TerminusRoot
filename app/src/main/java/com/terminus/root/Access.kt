@@ -15,7 +15,7 @@ object Access {
     )
 
     fun appUid(): Int = android.os.Process.myUid()
-    fun appGid(): Int = android.os.Process.myUid()
+    fun appGid(): Int = android.os.Process.myGid()
 
     fun suAvailable(): Boolean {
         if (SU_PATHS.any { File(it).exists() }) return true
