@@ -105,7 +105,7 @@ class TerminalActivity : AppCompatActivity() {
             val pty = shizukuPtys.getOrPut(session.id) {
                 ShizukuPty(applicationContext, session).also { it.start() }
             }
-            val cmd = arrayOf(TermBridge.binPath(this), "attach", pty.socketPath)
+            val cmd = arrayOf(TermBridge.binPath(this), "attach", "@${pty.socketName}")
             val t = TerminalSession(
                 cmd[0],
                 "/",

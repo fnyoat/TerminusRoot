@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,8 +42,18 @@ static int unix_connect(const char *path) {
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
-    if (connect(s, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+    socklen_t alen;
+    if (path[0] == '@') {
+        size_t name_len = strlen(path + 1);
+        if (name_len > sizeof(addr.sun_path) - 2) name_len = sizeof(addr.sun_path) - 2;
+        addr.sun_path[0] = '\0';
+        memcpy(addr.sun_path + 1, path + 1, name_len);
+        alen = (socklen_t) (offsetof(struct sockaddr_un, sun_path) + 1 + name_len);
+    } else {
+        strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
+        alen = (socklen_t) sizeof(addr);
+    }
+    if (connect(s, (struct sockaddr *) &addr, alen) < 0) {
         close(s);
         return -1;
     }

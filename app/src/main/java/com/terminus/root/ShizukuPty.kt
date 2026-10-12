@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.ServiceConnection
 import android.net.LocalServerSocket
 import android.net.LocalSocket
-import android.net.LocalSocketAddress
 import android.os.IBinder
 import android.util.Log
 import java.io.BufferedInputStream
@@ -35,12 +34,10 @@ class ShizukuPty(context: Context, private val session: Session) {
     private var acceptThread: Thread? = null
     private var outBuf = java.io.ByteArrayOutputStream()
 
-    val socketPath: String
+    val socketName: String
 
     init {
-        val dir = File(appContext.filesDir, "sock")
-        if (!dir.exists()) dir.mkdirs()
-        socketPath = File(dir, "${session.id}.pty.sock").absolutePath
+        socketName = "terminus_pty_${session.id.filter { it.isLetterOrDigit() }.take(24)}"
     }
 
     private val callback = object : IShellCallback.Stub() {
@@ -110,9 +107,7 @@ class ShizukuPty(context: Context, private val session: Session) {
 
     fun start() {
         try {
-            val s = LocalServerSocket(
-                LocalSocketAddress(socketPath, LocalSocketAddress.Namespace.FILESYSTEM)
-            )
+            val s = LocalServerSocket(socketName)
             server = s
             running = true
             acceptThread = Thread {
@@ -236,10 +231,6 @@ class ShizukuPty(context: Context, private val session: Session) {
         } catch (_: Throwable) {
         }
         try {
-            File(socketPath).delete()
-        } catch (_: Throwable) {
-        }
-        try {
             service?.exit()
         } catch (_: Throwable) {
         }
@@ -264,11 +255,6 @@ class ShizukuPty(context: Context, private val session: Session) {
                 .processNameSuffix("pty_${session.id.filter { it.isLetterOrDigit() }.take(20)}")
             try {
                 Shizuku.unbindUserService(args, null, true)
-            } catch (_: Throwable) {
-            }
-            try {
-                val dir = File(context.filesDir, "sock")
-                File(dir, "${session.id}.pty.sock").delete()
             } catch (_: Throwable) {
             }
         }
