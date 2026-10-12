@@ -93,6 +93,9 @@ class MainActivity : AppCompatActivity() {
             for (s in sessions) {
                 if (s.detached && TermBridge.isAlive(this, s.id)) ids.add(s.id)
                 else if (shizukuPtys.containsKey(s.id)) ids.add(s.id)
+                else if ((s.useShizuku || s.detachedVia == "shizuku") &&
+                    ShizukuHelper.isAvailable() && ShizukuPty.isRunning(this, s)
+                ) ids.add(s.id)
             }
             runOnUiThread {
                 runningIds.clear()

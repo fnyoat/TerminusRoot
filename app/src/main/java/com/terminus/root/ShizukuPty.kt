@@ -99,12 +99,7 @@ class ShizukuPty(context: Context, private val session: Session) {
         }
     }
 
-    private val userServiceArgs =
-        Shizuku.UserServiceArgs(ComponentName(appContext, RemoteShellService::class.java))
-            .daemon(true)
-            .version(3)
-            .tag("pty_${session.id}")
-            .processNameSuffix("pty_${session.id.filter { it.isLetterOrDigit() }.take(20)}")
+    private val userServiceArgs = argsFor(appContext, session)
 
     fun start() {
         try {
@@ -252,6 +247,27 @@ class ShizukuPty(context: Context, private val session: Session) {
     companion object {
         private const val TAG = "ShizukuPty"
         private const val MAX_OUT = 256 * 1024
+
+        private fun argsFor(context: Context, session: Session): Shizuku.UserServiceArgs =
+            Shizuku.UserServiceArgs(ComponentName(context.applicationContext, RemoteShellService::class.java))
+                .daemon(true)
+                .version(3)
+                .tag("pty_${session.id}")
+                .processNameSuffix("pty_${session.id.filter { it.isLetterOrDigit() }.take(20)}")
+
+        private val probeConn = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {}
+            override fun onServiceDisconnected(name: ComponentName?) {}
+        }
+
+        fun isRunning(context: Context, session: Session): Boolean {
+            if (!Shizuku.pingBinder()) return false
+            return try {
+                Shizuku.peekUserService(argsFor(context, session), probeConn) >= 0
+            } catch (_: Throwable) {
+                false
+            }
+        }
 
         fun remove(context: Context, session: Session) {
             val args = Shizuku.UserServiceArgs(

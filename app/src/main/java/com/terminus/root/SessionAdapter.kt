@@ -57,7 +57,8 @@ class SessionAdapter(
         }
         holder.textName.setTextColor(color)
         holder.textInfo.setTextColor(color)
-        holder.imageLock.visibility = if (session.detached) View.VISIBLE else View.GONE
+        holder.imageLock.visibility =
+            if (session.detached && isRunning(session)) View.VISIBLE else View.GONE
         holder.imageLock.imageTintList =
             android.content.res.ColorStateList.valueOf(color)
         holder.itemView.setOnClickListener { onClick(session) }
