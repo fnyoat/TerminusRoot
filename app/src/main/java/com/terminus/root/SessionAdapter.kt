@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -23,6 +24,7 @@ class SessionAdapter(
         val textName: TextView = view.findViewById(R.id.textSessionName)
         val textInfo: TextView = view.findViewById(R.id.textSessionInfo)
         val textTemplate: TextView = view.findViewById(R.id.textTemplate)
+        val imageLock: ImageView = view.findViewById(R.id.imageLock)
         val buttonMenu: ImageButton = view.findViewById(R.id.buttonMenu)
     }
     
@@ -55,6 +57,9 @@ class SessionAdapter(
         }
         holder.textName.setTextColor(color)
         holder.textInfo.setTextColor(color)
+        holder.imageLock.visibility = if (session.detached) View.VISIBLE else View.GONE
+        holder.imageLock.imageTintList =
+            android.content.res.ColorStateList.valueOf(color)
         holder.itemView.setOnClickListener { onClick(session) }
         holder.buttonMenu.setOnClickListener {
             val popup = PopupMenu(holder.itemView.context, holder.buttonMenu)

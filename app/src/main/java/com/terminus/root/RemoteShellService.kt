@@ -131,6 +131,16 @@ class RemoteShellService : IShellService.Stub() {
         val ctrl = "/data/local/tmp/termbridge_ctrl_${android.os.Process.myPid()}_${System.currentTimeMillis()}"
         ctrlPath = ctrl
 
+        val shellRcPath = try {
+            val rc = File("/data/local/tmp", "terminus_shellrc")
+            rc.writeBytes(SHELL_RC.toByteArray())
+            rc.setReadable(true, false)
+            rc.absolutePath
+        } catch (t: Throwable) {
+            Log.e(TAG, "write shellrc failed", t)
+            null
+        }
+
         val command = mutableListOf(
             exePath, "pty", cwd ?: "/", rows.toString(), cols.toString(),
             shell ?: "/system/bin/sh"
@@ -145,6 +155,9 @@ class RemoteShellService : IShellService.Stub() {
                 pb.environment()[entry.substring(0, index)] = entry.substring(index + 1)
             }
         }
+        pb.environment()["TERM"] = "xterm-256color"
+        pb.environment()["CLICOLOR"] = "1"
+        if (shellRcPath != null) pb.environment()["ENV"] = shellRcPath
         pb.redirectErrorStream(true)
 
         try {
@@ -330,5 +343,16 @@ class RemoteShellService : IShellService.Stub() {
     companion object {
         private const val TAG = "RemoteShellService"
         private const val MAX_BUFFER = 256 * 1024
+        private const val SHELL_RC = """
+[ -r /system/etc/mkshrc ] && . /system/etc/mkshrc
+alias ls='ls --color=auto'
+alias ll='ls -l'
+alias la='ls -a'
+alias l='ls -CF'
+alias grep='grep --color=auto'
+alias egrep='grep -E --color=auto'
+alias fgrep='grep -F --color=auto'
+export CLICOLOR=1
+"""
     }
 }
