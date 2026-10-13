@@ -72,4 +72,6 @@ dependencies {
     implementation 'dev.rikka.shizuku:api:13.1.5'
     implementation 'dev.rikka.shizuku:provider:13.1.5'
     implementation 'com.github.termux.termux-app:terminal-view:v0.118.0'
+
+    testImplementation 'junit:junit:4.13.2'
 }

@@ -270,6 +270,10 @@ class ShizukuPty(context: Context, private val session: Session) {
         private const val TAG = "ShizukuPty"
         private const val MAX_OUT = 256 * 1024
 
+        // NOTE: .version() must stay stable across releases. Shizuku keys user
+        // services by (component, version, tag); bumping it tears down the running
+        // user service and kills any live detached pty. Only bump when the
+        // IShellService AIDL contract changes.
         private fun argsFor(context: Context, session: Session): Shizuku.UserServiceArgs =
             Shizuku.UserServiceArgs(ComponentName(context.applicationContext, RemoteShellService::class.java))
                 .daemon(true)
@@ -292,15 +296,8 @@ class ShizukuPty(context: Context, private val session: Session) {
         }
 
         fun remove(context: Context, session: Session) {
-            val args = Shizuku.UserServiceArgs(
-                ComponentName(context, RemoteShellService::class.java)
-            )
-                .daemon(true)
-                .version(3)
-                .tag("pty_${session.id}")
-                .processNameSuffix("pty_${session.id.filter { it.isLetterOrDigit() }.take(20)}")
             try {
-                Shizuku.unbindUserService(args, null, true)
+                Shizuku.unbindUserService(argsFor(context, session), null, true)
             } catch (_: Throwable) {
             }
         }
