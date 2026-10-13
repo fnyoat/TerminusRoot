@@ -173,7 +173,8 @@ class TerminalActivity : AppCompatActivity() {
             return
         }
         if (session.detached &&
-            (TermBridge.isAlive(this, session.id) || shizukuPtys.containsKey(session.id))
+            (TermBridge.isAlive(this, session.id) ||
+                synchronized(shizukuPtys) { shizukuPtys.containsKey(session.id) })
         ) {
             toast(getString(R.string.detach_already))
             return

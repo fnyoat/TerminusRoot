@@ -73,7 +73,11 @@ class ShizukuPty(context: Context, private val session: Session) {
             val svc = IShellService.Stub.asInterface(binder)
             service = svc
             try {
-                svc.setDetached(session.detached || TermSettings.sessionPersist(appContext))
+                try {
+                    svc.setDetached(session.detached || TermSettings.sessionPersist(appContext))
+                } catch (t: Throwable) {
+                    Log.e(TAG, "setDetached failed", t)
+                }
                 val bin = File(TermBridge.binPath(appContext)).readBytes()
                 val argv = buildArgv()
                 svc.startPty(
@@ -251,7 +255,7 @@ class ShizukuPty(context: Context, private val session: Session) {
         private fun argsFor(context: Context, session: Session): Shizuku.UserServiceArgs =
             Shizuku.UserServiceArgs(ComponentName(context.applicationContext, RemoteShellService::class.java))
                 .daemon(true)
-                .version(4)
+                .version(3)
                 .tag("pty_${session.id}")
                 .processNameSuffix("pty_${session.id.filter { it.isLetterOrDigit() }.take(20)}")
 
@@ -274,7 +278,7 @@ class ShizukuPty(context: Context, private val session: Session) {
                 ComponentName(context, RemoteShellService::class.java)
             )
                 .daemon(true)
-                .version(4)
+                .version(3)
                 .tag("pty_${session.id}")
                 .processNameSuffix("pty_${session.id.filter { it.isLetterOrDigit() }.take(20)}")
             try {
