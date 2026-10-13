@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -7,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -21,9 +23,66 @@
 #define MAX_PAYLOAD 65536
 #define IBUF_CAP (MAX_PAYLOAD + 16)
 #define REPLAY_CAP (256 * 1024)
+#define IDLE_POLL_MS 3000
 
 struct winsize g_ws;
 volatile sig_atomic_t g_winch = 0;
+
+static long now_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long) ts.tv_sec * 1000L + (long) (ts.tv_nsec / 1000000L);
+}
+
+static long idle_ms_from_env(void) {
+    const char *v = getenv("TERMBRIDGE_IDLE_SECS");
+    if (!v || !v[0]) return 0;
+    long secs = atol(v);
+    if (secs <= 0) return 0;
+    return secs * 1000L;
+}
+
+static int marker_present(const char *marker) {
+    if (!marker || !marker[0]) return 1;
+    return access(marker, F_OK) == 0;
+}
+
+static pid_t first_child_of(pid_t ppid) {
+    DIR *d = opendir("/proc");
+    if (!d) return -1;
+    struct dirent *e;
+    pid_t found = -1;
+    while ((e = readdir(d)) != NULL) {
+        if (e->d_name[0] < '0' || e->d_name[0] > '9') continue;
+        char p[64];
+        snprintf(p, sizeof(p), "/proc/%s/stat", e->d_name);
+        int fd = open(p, O_RDONLY);
+        if (fd < 0) continue;
+        char b[512];
+        ssize_t n = read(fd, b, sizeof(b) - 1);
+        close(fd);
+        if (n <= 0) continue;
+        b[n] = '\0';
+        char *r = strrchr(b, ')');
+        if (!r) continue;
+        char st;
+        int pp = 0;
+        if (sscanf(r + 1, " %c %d", &st, &pp) == 2 && pp == (int) ppid) {
+            found = (pid_t) atoi(e->d_name);
+            break;
+        }
+    }
+    closedir(d);
+    return found;
+}
+
+static int shell_is_idle(pid_t shell, int master) {
+    int pg = -1;
+    if (ioctl(master, TIOCGPGRP, &pg) < 0) return 0;
+    if (pg != (int) shell) return 0;
+    if (first_child_of(shell) >= 0) return 0;
+    return 1;
+}
 
 static void on_winch(int sig) {
     (void) sig;
@@ -237,6 +296,10 @@ static int cmd_daemon(int argc, char **argv) {
     unsigned char replay[REPLAY_CAP];
     size_t replay_len = 0;
 
+    long idle_ms = idle_ms_from_env();
+    const char *idle_marker = getenv("TERMBRIDGE_IDLE_MARKER");
+    long last_io = now_ms();
+
     for (;;) {
         struct pollfd pfd[3];
         pfd[0].fd = master;
@@ -252,7 +315,7 @@ static int cmd_daemon(int argc, char **argv) {
             pfd[2].revents = 0;
             n = 3;
         }
-        int r = poll(pfd, n, -1);
+        int r = poll(pfd, n, idle_ms > 0 ? IDLE_POLL_MS : -1);
         if (r < 0) {
             if (errno == EINTR) continue;
             break;
@@ -261,6 +324,7 @@ static int cmd_daemon(int argc, char **argv) {
         if (pfd[0].revents & (POLLIN | POLLHUP | POLLERR)) {
             ssize_t k = read(master, obuf, sizeof(obuf));
             if (k > 0) {
+                last_io = now_ms();
                 replay_append(replay, &replay_len, sizeof(replay), obuf, (size_t) k);
                 if (cfd >= 0 && write_all(cfd, obuf, (size_t) k) < 0) {
                     close(cfd);
@@ -301,6 +365,7 @@ static int cmd_daemon(int argc, char **argv) {
                 cfd = -1;
                 ilen = 0;
             } else {
+                last_io = now_ms();
                 ilen += (size_t) k;
                 size_t pos = 0;
                 while (pos < ilen) {
@@ -328,6 +393,14 @@ static int cmd_daemon(int argc, char **argv) {
                     memmove(ibuf, ibuf + pos, ilen - pos);
                     ilen -= pos;
                 }
+            }
+        }
+
+        if (idle_ms > 0 && cfd < 0 && marker_present(idle_marker)) {
+            long np = now_ms();
+            if (np - last_io > idle_ms) {
+                if (shell_is_idle(child, master)) break;
+                last_io = np;
             }
         }
     }
@@ -529,6 +602,9 @@ static int cmd_pty(int argc, char **argv) {
     }
 
     int InEof = 0;
+    long idle_ms = idle_ms_from_env();
+    const char *idle_marker = getenv("TERMBRIDGE_IDLE_MARKER");
+    long last_io = now_ms();
     for (;;) {
         struct pollfd pfd[3];
         int nfd = 0;
@@ -554,7 +630,7 @@ static int cmd_pty(int argc, char **argv) {
             nfd++;
         }
 
-        int r = poll(pfd, (nfds_t) nfd, -1);
+        int r = poll(pfd, (nfds_t) nfd, idle_ms > 0 ? IDLE_POLL_MS : -1);
         if (r < 0) {
             if (errno == EINTR) {
                 if (g_winch) {
@@ -570,6 +646,7 @@ static int cmd_pty(int argc, char **argv) {
             char buf[8192];
             ssize_t n = read(master, buf, sizeof(buf));
             if (n <= 0) break;
+            last_io = now_ms();
             if (write_all(1, buf, (size_t) n) < 0) break;
         }
         if (pfd[mi].revents & (POLLHUP | POLLERR | POLLNVAL)) break;
@@ -581,6 +658,8 @@ static int cmd_pty(int argc, char **argv) {
                 InEof = 1;
             } else if (write_all(master, buf, (size_t) n) < 0) {
                 break;
+            } else {
+                last_io = now_ms();
             }
         } else if (ii >= 0 && (pfd[ii].revents & (POLLHUP | POLLERR | POLLNVAL))) {
             InEof = 1;
@@ -599,6 +678,14 @@ static int cmd_pty(int argc, char **argv) {
                     }
                 }
                 close(conn);
+            }
+        }
+
+        if (idle_ms > 0 && marker_present(idle_marker)) {
+            long np = now_ms();
+            if (np - last_io > idle_ms) {
+                if (shell_is_idle(child, master)) break;
+                last_io = np;
             }
         }
     }

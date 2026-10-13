@@ -24,7 +24,7 @@ import com.termux.view.TerminalViewClient
 import java.io.File
 
 private const val TAG = "TerminalActivity"
-private val terminalSessions = HashMap<String, TerminalSession>()
+internal val terminalSessions = HashMap<String, TerminalSession>()
 internal val shizukuPtys = HashMap<String, ShizukuPty>()
 
 internal fun finishTerminalSession(id: String) {
@@ -89,6 +89,8 @@ class TerminalActivity : AppCompatActivity() {
 
         val terminal = obtainSession()
         terminalSession = terminal
+        session.lastUsedAt = System.currentTimeMillis()
+        manager.updateSession(session)
         termView.attachSession(terminal)
         applyTerminalColor(terminal)
         currentCursorStyle = TermSettings.cursorStyle(this)
@@ -208,6 +210,7 @@ class TerminalActivity : AppCompatActivity() {
             }
         }
         envMap["TERM"] = "xterm-256color"
+        envMap["TERMBRIDGE_IDLE_SECS"] = (TermSettings.idleMinutes(this) * 60).toString()
 
         val shell = if (session.chroot.isNullOrEmpty()) ShellLocator.resolve(session.shell) else session.shell
         val argv = mutableListOf<String>()

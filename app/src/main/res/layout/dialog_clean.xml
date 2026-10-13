@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <CheckBox
+            android:id="@+id/checkCleanOnStart"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/clean_on_start" />
+
+        <CheckBox
+            android:id="@+id/checkCleanDead"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/clean_dead" />
+
+        <CheckBox
+            android:id="@+id/checkCleanNoHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/clean_no_history" />
+
+        <LinearLayout
+            android:id="@+id/rowCleanPriv"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/clean_priv"
+                android:textColor="@color/terminal_text"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/textCleanPriv"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#88FF88"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:hint="@string/clean_idle_minutes">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editIdleMinutes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/clean_idle_hint"
+            android:textColor="#88FFFFFF"
+            android:textSize="12sp" />
+    </LinearLayout>
+</ScrollView>

@@ -84,4 +84,18 @@
     <string name="select_session_persist">退出应用后，Shell 级会话如何处理</string>
     <string name="persist_keep">常驻后台独立运行</string>
     <string name="persist_follow">跟随应用退出即结束</string>
+    <string name="clean_sessions">清理会话</string>
+    <string name="clean_on_start">启动时自动清理</string>
+    <string name="clean_dead">清理已结束的会话</string>
+    <string name="clean_no_history">清理无历史（从未打开）的会话</string>
+    <string name="clean_priv">按权限清理</string>
+    <string name="clean_priv_off">关闭</string>
+    <string name="clean_priv_adb">保留 adb 及以上</string>
+    <string name="clean_priv_root">保留 root</string>
+    <string name="clean_idle_minutes">空闲自动结束（分钟）</string>
+    <string name="clean_idle_hint">0 表示关闭；仅在无任务运行时结束</string>
+    <string name="clean_now">立即清理</string>
+    <string name="clean_done">已清理 %1$d 个会话、%2$d 个进程</string>
+    <string name="clean_none">没有可清理的会话</string>
+    <string name="clean_summary_off">关闭</string>
 </resources>

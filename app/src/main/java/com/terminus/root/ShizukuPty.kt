@@ -231,6 +231,7 @@ class ShizukuPty(context: Context, private val session: Session) {
             val i = entry.indexOf('=')
             if (i > 0) map[entry.substring(0, i)] = entry.substring(i + 1)
         }
+        map["TERMBRIDGE_IDLE_SECS"] = (TermSettings.idleMinutes(appContext) * 60).toString()
         return map.map { "${it.key}=${it.value}" }.toTypedArray()
     }
 

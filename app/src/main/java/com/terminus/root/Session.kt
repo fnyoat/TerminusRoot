@@ -18,5 +18,7 @@ data class Session(
     var detached: Boolean = false,
     var detachedVia: String? = null,
     var lastCwd: String? = null,
-    var lastEnv: String? = null
+    var lastEnv: String? = null,
+    var createdAt: Long = System.currentTimeMillis(),
+    var lastUsedAt: Long = 0L
 ) : Serializable

@@ -43,7 +43,21 @@ class RemoteShellService : IShellService.Stub {
     private var ptyEnded = false
     private var ctrlPath: String? = null
     private var binPath: String? = null
+    private var markerPath: String? = null
     private var ptyBuffer = ByteArrayOutputStream()
+
+    private fun setIdleMarker(present: Boolean) {
+        val path = markerPath ?: return
+        try {
+            val f = File(path)
+            if (present) {
+                if (!f.exists()) f.writeBytes(ByteArray(0))
+            } else if (f.exists()) {
+                f.delete()
+            }
+        } catch (_: Throwable) {
+        }
+    }
 
     private fun ensureTrusted(): Boolean {
         val caller = Binder.getCallingUid()
@@ -129,6 +143,7 @@ class RemoteShellService : IShellService.Stub {
             if (ptyMode && running.get() && process != null) {
                 callback = cb
                 linkCallbackDeath(cb)
+                setIdleMarker(false)
                 val replay = ptyBuffer.toByteArray()
                 if (replay.isNotEmpty()) {
                     try {
@@ -181,6 +196,7 @@ class RemoteShellService : IShellService.Stub {
 
         val ctrl = "/data/local/tmp/termbridge_ctrl_${android.os.Process.myPid()}_${System.currentTimeMillis()}"
         ctrlPath = ctrl
+        markerPath = "$ctrl.idle"
 
         val shellRcPath = try {
             val rc = File("/data/local/tmp", "terminus_shellrc")
@@ -212,6 +228,7 @@ class RemoteShellService : IShellService.Stub {
         }
         pb.environment()["TERM"] = "xterm-256color"
         pb.environment()["CLICOLOR"] = "1"
+        pb.environment()["TERMBRIDGE_IDLE_MARKER"] = markerPath ?: "$ctrl.idle"
         if (shellRcPath != null) pb.environment()["ENV"] = shellRcPath
         pb.redirectErrorStream(true)
 
@@ -220,6 +237,7 @@ class RemoteShellService : IShellService.Stub {
             process = proc
             outputStream = DataOutputStream(proc.outputStream)
             running.set(true)
+            setIdleMarker(false)
             startByteReader(proc)
         } catch (t: Throwable) {
             Log.e(TAG, "startPty failed", t)
@@ -376,6 +394,7 @@ class RemoteShellService : IShellService.Stub {
                 android.os.Process.killProcess(android.os.Process.myPid())
             } else {
                 callback = null
+                setIdleMarker(true)
             }
         }
         try {
@@ -402,6 +421,7 @@ class RemoteShellService : IShellService.Stub {
 
     private fun destroyInternal() {
         unlinkCallbackDeath()
+        setIdleMarker(false)
         val wasPty = ptyMode
         running.set(false)
         if (wasPty) {
@@ -438,6 +458,7 @@ class RemoteShellService : IShellService.Stub {
             ptyMode = false
             ptyEnded = false
             ctrlPath = null
+            markerPath = null
             binPath?.let { path ->
                 try {
                     File(path).delete()

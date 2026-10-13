@@ -36,6 +36,10 @@ class MainActivity : AppCompatActivity() {
 
         ShizukuHelper.init()
         probeExecutor.execute { Access.suAvailable() }
+        probeExecutor.execute {
+            SessionCleaner.maybeAutoClean(applicationContext, manager)
+            runOnUiThread { updateList() }
+        }
         
         adapter = SessionAdapter(
             mutableListOf(),

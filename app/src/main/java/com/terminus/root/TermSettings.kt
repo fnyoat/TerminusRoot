@@ -15,8 +15,19 @@ object TermSettings {
     private const val KEY_QUICK = "quick_entries"
     private const val KEY_CURSOR_STYLE = "cursor_style"
     private const val KEY_PERSIST = "session_persist"
+    private const val KEY_CLEAN_ON_START = "clean_on_start"
+    private const val KEY_CLEAN_DEAD = "clean_dead"
+    private const val KEY_CLEAN_NO_HISTORY = "clean_no_history"
+    private const val KEY_CLEAN_PRIV = "clean_priv_level"
+    private const val KEY_IDLE_MINUTES = "pty_idle_minutes"
 
     const val DEFAULT_TEMPLATE_AUTO = "auto"
+
+    const val CLEAN_PRIV_OFF = "off"
+    const val CLEAN_PRIV_ADB = "adb"
+    const val CLEAN_PRIV_ROOT = "root"
+
+    const val DEFAULT_IDLE_MINUTES = 5
 
     val FONT_SIZES = listOf(18, 22, 26, 30, 34, 40, 48, 56)
 
@@ -76,6 +87,41 @@ object TermSettings {
 
     fun setSessionPersist(context: Context, persist: Boolean) {
         prefs(context).edit { putBoolean(KEY_PERSIST, persist) }
+    }
+
+    fun cleanOnStart(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_CLEAN_ON_START, true)
+
+    fun setCleanOnStart(context: Context, value: Boolean) {
+        prefs(context).edit { putBoolean(KEY_CLEAN_ON_START, value) }
+    }
+
+    fun cleanDead(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_CLEAN_DEAD, true)
+
+    fun setCleanDead(context: Context, value: Boolean) {
+        prefs(context).edit { putBoolean(KEY_CLEAN_DEAD, value) }
+    }
+
+    fun cleanNoHistory(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_CLEAN_NO_HISTORY, false)
+
+    fun setCleanNoHistory(context: Context, value: Boolean) {
+        prefs(context).edit { putBoolean(KEY_CLEAN_NO_HISTORY, value) }
+    }
+
+    fun cleanPrivLevel(context: Context): String =
+        prefs(context).getString(KEY_CLEAN_PRIV, CLEAN_PRIV_OFF) ?: CLEAN_PRIV_OFF
+
+    fun setCleanPrivLevel(context: Context, level: String) {
+        prefs(context).edit { putString(KEY_CLEAN_PRIV, level) }
+    }
+
+    fun idleMinutes(context: Context): Int =
+        prefs(context).getInt(KEY_IDLE_MINUTES, DEFAULT_IDLE_MINUTES).coerceAtLeast(0)
+
+    fun setIdleMinutes(context: Context, minutes: Int) {
+        prefs(context).edit { putInt(KEY_IDLE_MINUTES, minutes.coerceAtLeast(0)) }
     }
 
     fun defaultPwd(context: Context): String =

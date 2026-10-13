@@ -1,6 +1,7 @@
 package com.terminus.root
 
 import android.Manifest
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.GradientDrawable
@@ -10,8 +11,10 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import android.view.View
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -25,6 +28,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var textDefaultPwd: TextView
     private lateinit var textPersist: TextView
     private lateinit var textAllFiles: TextView
+    private lateinit var textClean: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +42,7 @@ class SettingsActivity : AppCompatActivity() {
         textDefaultPwd = findViewById(R.id.textDefaultPwd)
         textPersist = findViewById(R.id.textPersist)
         textAllFiles = findViewById(R.id.textAllFiles)
+        textClean = findViewById(R.id.textClean)
         findViewById<TextView>(R.id.headerTitle).setTextColor(TermSettings.color(this))
 
         findViewById<View>(R.id.rowTemplates).setOnClickListener {
@@ -51,6 +56,7 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<View>(R.id.rowDefaultPwd).setOnClickListener { showDefaultPwdDialog() }
         findViewById<View>(R.id.rowPersist).setOnClickListener { showPersistDialog() }
         findViewById<View>(R.id.rowAllFiles).setOnClickListener { requestAllFilesAccess() }
+        findViewById<View>(R.id.rowClean).setOnClickListener { showCleanDialog() }
     }
 
     override fun onResume() {
@@ -72,6 +78,19 @@ class SettingsActivity : AppCompatActivity() {
         textAllFiles.text = getString(
             if (hasAllFilesAccess()) R.string.all_files_granted else R.string.all_files_denied
         )
+        textClean.text = cleanSummary()
+    }
+
+    private fun cleanSummary(): String {
+        val parts = mutableListOf<String>()
+        if (TermSettings.cleanOnStart(this)) parts.add("启动")
+        when (TermSettings.cleanPrivLevel(this)) {
+            TermSettings.CLEAN_PRIV_ADB -> parts.add("清理<adb")
+            TermSettings.CLEAN_PRIV_ROOT -> parts.add("清理<root")
+        }
+        val idle = TermSettings.idleMinutes(this)
+        if (idle > 0) parts.add("空闲${idle}分")
+        return if (parts.isEmpty()) getString(R.string.clean_summary_off) else parts.joinToString(" · ")
     }
 
     private fun hasAllFilesAccess(): Boolean =
@@ -179,6 +198,97 @@ class SettingsActivity : AppCompatActivity() {
                 refresh()
             }
             .show()
+    }
+
+    private fun showCleanDialog() {
+        val view = layoutInflater.inflate(R.layout.dialog_clean, null)
+        val checkOnStart = view.findViewById<CheckBox>(R.id.checkCleanOnStart)
+        val checkDead = view.findViewById<CheckBox>(R.id.checkCleanDead)
+        val checkNoHistory = view.findViewById<CheckBox>(R.id.checkCleanNoHistory)
+        val textPriv = view.findViewById<TextView>(R.id.textCleanPriv)
+        val editIdle = view.findViewById<EditText>(R.id.editIdleMinutes)
+
+        checkOnStart.isChecked = TermSettings.cleanOnStart(this)
+        checkDead.isChecked = TermSettings.cleanDead(this)
+        checkNoHistory.isChecked = TermSettings.cleanNoHistory(this)
+        editIdle.setText(TermSettings.idleMinutes(this).toString())
+
+        val values = arrayOf(
+            TermSettings.CLEAN_PRIV_OFF,
+            TermSettings.CLEAN_PRIV_ADB,
+            TermSettings.CLEAN_PRIV_ROOT
+        )
+        val labels = arrayOf(
+            getString(R.string.clean_priv_off),
+            getString(R.string.clean_priv_adb),
+            getString(R.string.clean_priv_root)
+        )
+        var privLevel = TermSettings.cleanPrivLevel(this)
+        fun privLabel(level: String): String =
+            labels[values.indexOf(level).let { if (it < 0) 0 else it }]
+        textPriv.text = privLabel(privLevel)
+
+        view.findViewById<View>(R.id.rowCleanPriv).setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.clean_priv)
+                .setSingleChoiceItems(labels, values.indexOf(privLevel).coerceAtLeast(0)) { d, which ->
+                    privLevel = values[which]
+                    textPriv.text = labels[which]
+                    d.dismiss()
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
+
+        fun persist() {
+            TermSettings.setCleanOnStart(this, checkOnStart.isChecked)
+            TermSettings.setCleanDead(this, checkDead.isChecked)
+            TermSettings.setCleanNoHistory(this, checkNoHistory.isChecked)
+            TermSettings.setCleanPrivLevel(this, privLevel)
+            TermSettings.setIdleMinutes(
+                this,
+                editIdle.text.toString().toIntOrNull() ?: TermSettings.DEFAULT_IDLE_MINUTES
+            )
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.clean_sessions)
+            .setView(view)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                persist()
+                refresh()
+            }
+            .setNeutralButton(R.string.clean_now, null)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(DialogInterface.BUTTON_NEUTRAL).setOnClickListener {
+                persist()
+                runCleanNow()
+            }
+        }
+        dialog.show()
+    }
+
+    private fun runCleanNow() {
+        val app = applicationContext
+        val mgr = manager
+        Thread {
+            val result = try {
+                SessionCleaner.cleanNow(app, mgr)
+            } catch (t: Throwable) {
+                SessionCleaner.Result(0, 0)
+            }
+            runOnUiThread {
+                val msg = if (result.sessions == 0 && result.processes == 0) {
+                    getString(R.string.clean_none)
+                } else {
+                    getString(R.string.clean_done, result.sessions, result.processes)
+                }
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+                refresh()
+            }
+        }.start()
     }
 
     override fun onRequestPermissionsResult(
