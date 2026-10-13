@@ -55,7 +55,7 @@ class RemoteShellService : IShellService.Stub {
         }
         return try {
             val pkgs = ctx.packageManager.getPackagesForUid(caller)
-            val ok = pkgs != null && pkgs.contains(ctx.packageName)
+            val ok = pkgs != null && pkgs.contains(EXPECTED_PACKAGE)
             if (!ok) Log.e(TAG, "rejected binder call from uid $caller")
             ok
         } catch (t: Throwable) {
@@ -261,24 +261,28 @@ class RemoteShellService : IShellService.Stub {
 
     private fun startByteReader(proc: Process) {
         Thread {
-            val buf = ByteArray(8192)
+            val buf = ByteArray(32768)
             try {
                 val ins = proc.inputStream
                 while (running.get()) {
                     val n = ins.read(buf)
                     if (n < 0) break
-                    synchronized(ptyLock) {
-                        if (ptyBuffer.size() > MAX_BUFFER) {
-                            val keep = ptyBuffer.toByteArray()
-                            val from = keep.size - MAX_BUFFER / 2
-                            ptyBuffer = ByteArrayOutputStream(MAX_BUFFER)
-                            ptyBuffer.write(keep, from, keep.size - from)
+                    val cb = callback
+                    if (cb == null) {
+                        synchronized(ptyLock) {
+                            if (ptyBuffer.size() > MAX_BUFFER) {
+                                val keep = ptyBuffer.toByteArray()
+                                val from = keep.size - MAX_BUFFER / 2
+                                ptyBuffer = ByteArrayOutputStream(MAX_BUFFER)
+                                ptyBuffer.write(keep, from, keep.size - from)
+                            }
+                            ptyBuffer.write(buf, 0, n)
                         }
-                        ptyBuffer.write(buf, 0, n)
-                    }
-                    try {
-                        callback?.onData(buf.copyOf(n))
-                    } catch (_: Throwable) {
+                    } else {
+                        try {
+                            cb.onData(buf.copyOf(n))
+                        } catch (_: Throwable) {
+                        }
                     }
                 }
             } catch (t: Throwable) {
@@ -351,12 +355,10 @@ class RemoteShellService : IShellService.Stub {
     }
 
     override fun exit() {
-        if (!ensureTrusted()) return
         destroyInternal()
     }
 
     override fun destroy() {
-        if (!ensureTrusted()) return
         destroyInternal()
     }
 
@@ -449,6 +451,7 @@ class RemoteShellService : IShellService.Stub {
 
     companion object {
         private const val TAG = "RemoteShellService"
+        private const val EXPECTED_PACKAGE = "com.terminus.root"
         private const val MAX_BUFFER = 256 * 1024
         private const val MODE_PRIVATE = 448
         private const val SHELL_RC = """
