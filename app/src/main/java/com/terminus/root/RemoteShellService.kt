@@ -314,6 +314,10 @@ class RemoteShellService : IShellService.Stub {
                 callback?.onExit(0)
             } catch (_: Throwable) {
             }
+            if (detached && callback == null) {
+                destroyInternal()
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
         }.start()
     }
 
