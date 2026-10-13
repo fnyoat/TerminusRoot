@@ -38,11 +38,15 @@ class RemoteShellService : IShellService.Stub() {
     private fun ensureTrusted(): Boolean {
         val caller = Binder.getCallingUid()
         if (caller == android.os.Process.myUid()) return true
-        val expected = trustedUid
-        if (expected < 0) return true
-        if (caller == expected) return true
-        Log.e(TAG, "rejected binder call from uid $caller (expected $expected)")
-        return false
+        return try {
+            val pkgs = packageManager.getPackagesForUid(caller)
+            val ok = pkgs != null && pkgs.contains(packageName)
+            if (!ok) Log.e(TAG, "rejected binder call from uid $caller")
+            ok
+        } catch (t: Throwable) {
+            Log.e(TAG, "caller check failed", t)
+            false
+        }
     }
 
     override fun start(
@@ -432,13 +436,6 @@ class RemoteShellService : IShellService.Stub() {
         private const val TAG = "RemoteShellService"
         private const val MAX_BUFFER = 256 * 1024
         private const val MODE_PRIVATE = 448
-        private val trustedUid: Int by lazy {
-            try {
-                Os.stat("/data/data/com.terminus.root").st_uid
-            } catch (_: Throwable) {
-                -1
-            }
-        }
         private const val SHELL_RC = """
 [ -r /system/etc/mkshrc ] && . /system/etc/mkshrc
 alias ls='ls --color=auto'
