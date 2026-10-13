@@ -1,5 +1,6 @@
 package com.terminus.root
 
+import android.content.Context
 import android.net.LocalSocket
 import android.net.LocalSocketAddress
 import android.os.Binder
@@ -14,6 +15,15 @@ import java.io.InputStreamReader
 import java.util.concurrent.atomic.AtomicBoolean
 
 class RemoteShellService : IShellService.Stub() {
+    @Volatile
+    private var appContext: Context? = null
+
+    constructor() : super()
+
+    constructor(context: Context) : super() {
+        appContext = context.applicationContext ?: context
+    }
+
     private var process: Process? = null
     private var outputStream: DataOutputStream? = null
     private var callback: IShellCallback? = null
@@ -38,9 +48,14 @@ class RemoteShellService : IShellService.Stub() {
     private fun ensureTrusted(): Boolean {
         val caller = Binder.getCallingUid()
         if (caller == android.os.Process.myUid()) return true
+        val ctx = appContext
+        if (ctx == null) {
+            Log.w(TAG, "no context; cannot verify caller uid $caller")
+            return true
+        }
         return try {
-            val pkgs = packageManager.getPackagesForUid(caller)
-            val ok = pkgs != null && pkgs.contains(packageName)
+            val pkgs = ctx.packageManager.getPackagesForUid(caller)
+            val ok = pkgs != null && pkgs.contains(ctx.packageName)
             if (!ok) Log.e(TAG, "rejected binder call from uid $caller")
             ok
         } catch (t: Throwable) {
