@@ -2,7 +2,9 @@ package com.terminus.root
 
 import android.net.LocalSocket
 import android.net.LocalSocketAddress
+import android.os.Binder
 import android.os.IBinder
+import android.system.Os
 import android.util.Log
 import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
@@ -33,6 +35,16 @@ class RemoteShellService : IShellService.Stub() {
     private var binPath: String? = null
     private var ptyBuffer = ByteArrayOutputStream()
 
+    private fun ensureTrusted(): Boolean {
+        val caller = Binder.getCallingUid()
+        if (caller == android.os.Process.myUid()) return true
+        val expected = trustedUid
+        if (expected < 0) return true
+        if (caller == expected) return true
+        Log.e(TAG, "rejected binder call from uid $caller (expected $expected)")
+        return false
+    }
+
     override fun start(
         shell: String?,
         args: Array<String>?,
@@ -41,6 +53,7 @@ class RemoteShellService : IShellService.Stub() {
         chroot: String?,
         cb: IShellCallback?
     ) {
+        if (!ensureTrusted()) return
         destroyInternal()
         ptyMode = false
         callback = cb
@@ -92,6 +105,7 @@ class RemoteShellService : IShellService.Stub() {
         env: Array<String>?,
         cb: IShellCallback?
     ) {
+        if (!ensureTrusted()) return
         synchronized(ptyLock) {
             if (ptyMode && running.get() && process != null) {
                 callback = cb
@@ -130,7 +144,11 @@ class RemoteShellService : IShellService.Stub() {
             f.writeBytes(bin ?: ByteArray(0))
             f.setExecutable(true, false)
             f.setReadable(true, false)
-            binPath = f.absolutePath
+            try {
+                Os.chmod(f.absolutePath, MODE_PRIVATE)
+            } catch (_: Throwable) {
+            }
+            synchronized(ptyLock) { binPath = f.absolutePath }
             exePath = f.absolutePath
         } catch (t: Throwable) {
             Log.e(TAG, "write bin failed", t)
@@ -149,6 +167,10 @@ class RemoteShellService : IShellService.Stub() {
             val rc = File("/data/local/tmp", "terminus_shellrc")
             rc.writeBytes(SHELL_RC.toByteArray())
             rc.setReadable(true, false)
+            try {
+                Os.chmod(rc.absolutePath, MODE_PRIVATE)
+            } catch (_: Throwable) {
+            }
             rc.absolutePath
         } catch (t: Throwable) {
             Log.e(TAG, "write shellrc failed", t)
@@ -255,6 +277,7 @@ class RemoteShellService : IShellService.Stub() {
     }
 
     override fun write(data: String?) {
+        if (!ensureTrusted()) return
         if (data.isNullOrEmpty()) return
         try {
             outputStream?.write(data.toByteArray())
@@ -265,6 +288,7 @@ class RemoteShellService : IShellService.Stub() {
     }
 
     override fun writeData(data: ByteArray?) {
+        if (!ensureTrusted()) return
         if (data == null || data.isEmpty()) return
         try {
             outputStream?.write(data)
@@ -275,6 +299,7 @@ class RemoteShellService : IShellService.Stub() {
     }
 
     override fun resize(rows: Int, cols: Int) {
+        if (!ensureTrusted()) return
         val path = ctrlPath ?: return
         var attempt = 0
         while (attempt < 40) {
@@ -297,6 +322,7 @@ class RemoteShellService : IShellService.Stub() {
     }
 
     override fun waitFor(): Int {
+        if (!ensureTrusted()) return -1
         val proc = process ?: return -1
         return try {
             proc.waitFor()
@@ -306,14 +332,17 @@ class RemoteShellService : IShellService.Stub() {
     }
 
     override fun exit() {
+        if (!ensureTrusted()) return
         destroyInternal()
     }
 
     override fun destroy() {
+        if (!ensureTrusted()) return
         destroyInternal()
     }
 
     override fun setDetached(detached: Boolean) {
+        if (!ensureTrusted()) return
         this.detached = detached
     }
 
@@ -402,6 +431,14 @@ class RemoteShellService : IShellService.Stub() {
     companion object {
         private const val TAG = "RemoteShellService"
         private const val MAX_BUFFER = 256 * 1024
+        private const val MODE_PRIVATE = 448
+        private val trustedUid: Int by lazy {
+            try {
+                Os.stat("/data/data/com.terminus.root").st_uid
+            } catch (_: Throwable) {
+                -1
+            }
+        }
         private const val SHELL_RC = """
 [ -r /system/etc/mkshrc ] && . /system/etc/mkshrc
 alias ls='ls --color=auto'

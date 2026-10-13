@@ -84,6 +84,11 @@ class MainActivity : AppCompatActivity() {
         updateList()
     }
     
+    override fun onDestroy() {
+        super.onDestroy()
+        probeExecutor.shutdownNow()
+    }
+    
     private fun updateList() {
         val sessions = manager.getSessions()
         adapter.updateSessions(sessions)
@@ -94,7 +99,8 @@ class MainActivity : AppCompatActivity() {
                 if (s.detached && TermBridge.isAlive(this, s.id)) ids.add(s.id)
                 else if (synchronized(shizukuPtys) { shizukuPtys.containsKey(s.id) }) ids.add(s.id)
                 else if ((s.useShizuku || s.detachedVia == "shizuku") &&
-                    ShizukuHelper.isAvailable() && ShizukuPty.isRunning(this, s)
+                    ShizukuHelper.isAvailable() && ShizukuHelper.hasPermission() &&
+                    ShizukuPty.isRunning(this, s)
                 ) ids.add(s.id)
             }
             runOnUiThread {

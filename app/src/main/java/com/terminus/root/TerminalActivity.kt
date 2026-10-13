@@ -41,7 +41,12 @@ class TerminalActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_terminal)
 
-        session = intent.getSerializableExtra("session") as Session
+        val restored = intent.getSerializableExtra("session") as? Session
+        if (restored == null) {
+            finish()
+            return
+        }
+        session = restored
         manager = SessionManager(this)
         InsetsUtil.apply(this)
 

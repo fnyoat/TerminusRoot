@@ -30,43 +30,4 @@ object QuickCollection {
             .show()
     }
 
-    fun showManager(activity: AppCompatActivity) {
-        val entries = TermSettings.quickEntries(activity)
-        val items = mutableListOf<String>()
-        if (entries.isEmpty()) items.add(activity.getString(R.string.quick_empty))
-        else entries.forEach { items.add(it.label.ifEmpty { it.value }) }
-        items.add(activity.getString(R.string.quick_add))
-        val dialog = AlertDialog.Builder(activity)
-            .setTitle(R.string.quick_collection)
-            .setItems(items.toTypedArray()) { _, which ->
-                if (which == items.size - 1) showAddDialog(activity) { showManager(activity) }
-            }
-            .setNegativeButton(R.string.close, null)
-            .create()
-        dialog.setOnShowListener {
-            dialog.listView.setOnItemLongClickListener { _, _, position, _ ->
-                if (position < entries.size) {
-                    confirmDelete(activity, entries[position])
-                    true
-                } else {
-                    false
-                }
-            }
-        }
-        dialog.show()
-    }
-
-    private fun confirmDelete(activity: AppCompatActivity, entry: TermSettings.QuickEntry) {
-        AlertDialog.Builder(activity)
-            .setTitle(R.string.quick_delete_confirm)
-            .setMessage(entry.label.ifEmpty { entry.value })
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.ok) { _, _ ->
-                val updated = TermSettings.quickEntries(activity).toMutableList()
-                updated.remove(entry)
-                TermSettings.setQuickEntries(activity, updated)
-                showManager(activity)
-            }
-            .show()
-    }
 }
