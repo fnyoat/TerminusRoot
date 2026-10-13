@@ -14,7 +14,7 @@ import java.io.File
 import java.io.InputStreamReader
 import java.util.concurrent.atomic.AtomicBoolean
 
-class RemoteShellService : IShellService.Stub() {
+class RemoteShellService : IShellService.Stub {
     @Volatile
     private var appContext: Context? = null
 
