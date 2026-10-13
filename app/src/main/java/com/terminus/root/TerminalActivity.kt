@@ -125,7 +125,7 @@ class TerminalActivity : AppCompatActivity() {
                 cmd[0],
                 "/",
                 cmd,
-                arrayOf("TERM=xterm-256color"),
+                arrayOf("TERM=xterm-256color", "TERMINUS_PTY_TOKEN=${pty.token}"),
                 2000,
                 sessionClient
             )

@@ -36,6 +36,8 @@ class ShizukuPty(context: Context, private val session: Session) {
 
     val socketName: String
 
+    val token: String = java.util.UUID.randomUUID().toString().replace("-", "")
+
     init {
         socketName = "terminus_pty_${session.id.filter { it.isLetterOrDigit() }.take(24)}"
     }
@@ -151,6 +153,10 @@ class ShizukuPty(context: Context, private val session: Session) {
     private fun relay(c: LocalSocket) {
         try {
             val ins = BufferedInputStream(c.inputStream)
+            if (!authenticate(ins)) {
+                Log.e(TAG, "pty auth failed")
+                return
+            }
             val header = ByteArray(5)
             while (running) {
                 if (!readFully(ins, header, 5)) break
@@ -180,6 +186,17 @@ class ShizukuPty(context: Context, private val session: Session) {
         } catch (t: Throwable) {
             Log.e(TAG, "relay ended", t)
         }
+    }
+
+    private fun authenticate(ins: java.io.InputStream): Boolean {
+        val sb = StringBuilder()
+        while (sb.length < 128) {
+            val b = ins.read()
+            if (b < 0) return false
+            if (b == '\n'.code) break
+            sb.append(b.toChar())
+        }
+        return sb.toString() == "AUTH $token"
     }
 
     private fun readFully(ins: java.io.InputStream, buf: ByteArray, len: Int): Boolean {

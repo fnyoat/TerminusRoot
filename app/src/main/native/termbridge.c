@@ -20,6 +20,7 @@
 #define FRAME_RESIZE 0x01
 #define MAX_PAYLOAD 65536
 #define IBUF_CAP (MAX_PAYLOAD + 16)
+#define REPLAY_CAP (256 * 1024)
 
 struct winsize g_ws;
 volatile sig_atomic_t g_winch = 0;
@@ -98,6 +99,22 @@ static void set_win(int fd, int rows, int cols) {
     ws.ws_row = (unsigned short) rows;
     ws.ws_col = (unsigned short) cols;
     ioctl(fd, TIOCSWINSZ, &ws);
+}
+
+static void replay_append(unsigned char *buf, size_t *len, size_t cap,
+                          const unsigned char *data, size_t n) {
+    if (n >= cap) {
+        memcpy(buf, data + (n - cap), cap);
+        *len = cap;
+        return;
+    }
+    if (*len + n > cap) {
+        size_t drop = *len + n - cap;
+        memmove(buf, buf + drop, *len - drop);
+        *len -= drop;
+    }
+    memcpy(buf + *len, data, n);
+    *len += n;
 }
 
 static void try_escape_cgroup(void) {
@@ -217,6 +234,8 @@ static int cmd_daemon(int argc, char **argv) {
     unsigned char obuf[MAX_PAYLOAD];
     unsigned char ibuf[IBUF_CAP];
     size_t ilen = 0;
+    unsigned char replay[REPLAY_CAP];
+    size_t replay_len = 0;
 
     for (;;) {
         struct pollfd pfd[3];
@@ -242,6 +261,7 @@ static int cmd_daemon(int argc, char **argv) {
         if (pfd[0].revents & (POLLIN | POLLHUP | POLLERR)) {
             ssize_t k = read(master, obuf, sizeof(obuf));
             if (k > 0) {
+                replay_append(replay, &replay_len, sizeof(replay), obuf, (size_t) k);
                 if (cfd >= 0 && write_all(cfd, obuf, (size_t) k) < 0) {
                     close(cfd);
                     cfd = -1;
@@ -262,6 +282,10 @@ static int cmd_daemon(int argc, char **argv) {
                 if (cfd >= 0) close(cfd);
                 cfd = nc;
                 ilen = 0;
+                if (replay_len > 0 && write_all(cfd, replay, replay_len) < 0) {
+                    close(cfd);
+                    cfd = -1;
+                }
             }
         }
 
@@ -341,6 +365,16 @@ static int cmd_attach(int argc, char **argv) {
 
     signal(SIGPIPE, SIG_IGN);
     signal(SIGWINCH, on_winch);
+
+    const char *token = getenv("TERMINUS_PTY_TOKEN");
+    if (token && token[0]) {
+        char authbuf[160];
+        int alen = snprintf(authbuf, sizeof(authbuf), "AUTH %s\n", token);
+        if (alen <= 0 || write_all(s, authbuf, (size_t) alen) < 0) {
+            close(s);
+            return 2;
+        }
+    }
 
     struct termios saved;
     int have_saved = tcgetattr(STDIN_FILENO, &saved) == 0;
