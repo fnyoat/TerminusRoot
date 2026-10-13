@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity() {
         settingsLink = findViewById(R.id.settingsLink)
 
         ShizukuHelper.init()
+        probeExecutor.execute { Access.suAvailable() }
         
         adapter = SessionAdapter(
             mutableListOf(),
@@ -211,6 +212,7 @@ class MainActivity : AppCompatActivity() {
                 } else if (session.detached) {
                     TermBridge.kill(this, session.id)
                 }
+                finishTerminalSession(session.id)
                 manager.removeSession(session)
                 updateList()
             }

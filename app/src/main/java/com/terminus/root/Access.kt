@@ -17,7 +17,21 @@ object Access {
     fun appUid(): Int = android.os.Process.myUid()
     fun appGid(): Int = android.system.Os.getgid()
 
+    @Volatile
+    private var suCache: Boolean? = null
+
     fun suAvailable(): Boolean {
+        suCache?.let { return it }
+        val result = probeSu()
+        suCache = result
+        return result
+    }
+
+    fun resetSuCache() {
+        suCache = null
+    }
+
+    private fun probeSu(): Boolean {
         if (SU_PATHS.any { File(it).exists() }) return true
         if (testCommand("which", "su")) return true
         return testShell("su 0 id")

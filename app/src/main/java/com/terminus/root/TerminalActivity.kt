@@ -26,6 +26,10 @@ import java.io.File
 private const val TAG = "TerminalActivity"
 private val terminalSessions = HashMap<String, TerminalSession>()
 internal val shizukuPtys = HashMap<String, ShizukuPty>()
+
+internal fun finishTerminalSession(id: String) {
+    terminalSessions.remove(id)?.let { if (it.isRunning) it.finishIfRunning() }
+}
 private var currentTerminal: TerminalActivity? = null
 private var currentCursorStyle = TermSettings.CURSOR_BLOCK
 
