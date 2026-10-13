@@ -4,17 +4,22 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.termux.terminal.KeyHandler
 import com.termux.terminal.TerminalColors
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
@@ -37,9 +42,25 @@ class TerminalActivity : AppCompatActivity() {
     private lateinit var scrollView: ScrollView
     lateinit var termView: TerminalView
     private lateinit var layoutInput: View
+    private lateinit var keysRow: LinearLayout
     private lateinit var session: Session
     private lateinit var manager: SessionManager
     private var terminalSession: TerminalSession? = null
+
+    @Volatile
+    var ctrlActive = false
+        private set
+
+    @Volatile
+    var altActive = false
+        private set
+
+    @Volatile
+    var shiftActive = false
+        private set
+
+    private val modKeyViews = HashMap<Int, TextView>()
+    private var keyColor = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +78,7 @@ class TerminalActivity : AppCompatActivity() {
         scrollView = findViewById(R.id.scrollView)
         termView = findViewById(R.id.termView)
         layoutInput = findViewById(R.id.layoutInput)
+        keysRow = findViewById(R.id.keysRow)
         val headerTitle = findViewById<TextView>(R.id.headerTitle)
         headerTitle.text = session.name
         val color = TermSettings.color(this)
@@ -67,6 +89,8 @@ class TerminalActivity : AppCompatActivity() {
         val linkDetach = findViewById<ImageView>(R.id.linkDetach)
         linkDetach.imageTintList = ColorStateList.valueOf(color)
         linkDetach.setOnClickListener { detachSession() }
+
+        buildExtraKeys(color)
 
         setupTerminalMode(color)
         if (intent.getBooleanExtra("auto_detach", false)) {
@@ -321,6 +345,134 @@ class TerminalActivity : AppCompatActivity() {
         colors.mCurrentColors[TextStyle.COLOR_INDEX_CURSOR] = fg
     }
 
+    private class ExtraKey(
+        val label: String,
+        val keyCode: Int = 0,
+        val codePoint: Int = 0,
+        val modKind: Int = MOD_NONE
+    )
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun buildExtraKeys(color: Int) {
+        keyColor = color
+        val specs = listOf(
+            ExtraKey("Esc", keyCode = KeyEvent.KEYCODE_ESCAPE),
+            ExtraKey("Tab", keyCode = KeyEvent.KEYCODE_TAB),
+            ExtraKey("Ctrl", modKind = MOD_CTRL),
+            ExtraKey("Alt", modKind = MOD_ALT),
+            ExtraKey("Shift", modKind = MOD_SHIFT),
+            ExtraKey("↑", keyCode = KeyEvent.KEYCODE_DPAD_UP),
+            ExtraKey("↓", keyCode = KeyEvent.KEYCODE_DPAD_DOWN),
+            ExtraKey("←", keyCode = KeyEvent.KEYCODE_DPAD_LEFT),
+            ExtraKey("→", keyCode = KeyEvent.KEYCODE_DPAD_RIGHT),
+            ExtraKey("Home", keyCode = KeyEvent.KEYCODE_MOVE_HOME),
+            ExtraKey("End", keyCode = KeyEvent.KEYCODE_MOVE_END),
+            ExtraKey("PgUp", keyCode = KeyEvent.KEYCODE_PAGE_UP),
+            ExtraKey("PgDn", keyCode = KeyEvent.KEYCODE_PAGE_DOWN),
+            ExtraKey("Ins", keyCode = KeyEvent.KEYCODE_INSERT),
+            ExtraKey("Del", keyCode = KeyEvent.KEYCODE_FORWARD_DEL),
+            ExtraKey("-", codePoint = '-'.code),
+            ExtraKey("/", codePoint = '/'.code),
+            ExtraKey("|", codePoint = '|'.code),
+            ExtraKey("\\", codePoint = '\\'.code),
+            ExtraKey(";", codePoint = ';'.code),
+            ExtraKey(":", codePoint = ':'.code),
+            ExtraKey("\"", codePoint = '"'.code),
+            ExtraKey("'", codePoint = '\''.code),
+            ExtraKey("`", codePoint = '`'.code),
+            ExtraKey("~", codePoint = '~'.code),
+            ExtraKey("&", codePoint = '&'.code),
+            ExtraKey("*", codePoint = '*'.code),
+            ExtraKey("$", codePoint = '$'.code),
+            ExtraKey("#", codePoint = '#'.code),
+            ExtraKey("@", codePoint = '@'.code),
+            ExtraKey("!", codePoint = '!'.code),
+            ExtraKey("%", codePoint = '%'.code),
+            ExtraKey("^", codePoint = '^'.code),
+            ExtraKey("+", codePoint = '+'.code),
+            ExtraKey("=", codePoint = '='.code),
+            ExtraKey("(", codePoint = '('.code),
+            ExtraKey(")", codePoint = ')'.code),
+            ExtraKey("<", codePoint = '<'.code),
+            ExtraKey(">", codePoint = '>'.code),
+            ExtraKey("{", codePoint = '{'.code),
+            ExtraKey("}", codePoint = '}'.code),
+            ExtraKey("[", codePoint = '['.code),
+            ExtraKey("]", codePoint = ']'.code)
+        )
+        for (spec in specs) {
+            val tv = TextView(this)
+            tv.text = spec.label
+            tv.textSize = 13f
+            tv.typeface = Typeface.MONOSPACE
+            tv.gravity = Gravity.CENTER
+            tv.isFocusable = false
+            tv.setPadding(dp(10), dp(7), dp(10), dp(7))
+            tv.setTextColor(color)
+            tv.setBackgroundResource(R.drawable.bg_extra_key)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lp.marginEnd = dp(4)
+            lp.marginStart = dp(2)
+            tv.layoutParams = lp
+            tv.setOnClickListener { onExtraKey(spec.keyCode, spec.codePoint, spec.modKind) }
+            if (spec.modKind != MOD_NONE) modKeyViews[spec.modKind] = tv
+            keysRow.addView(tv)
+        }
+        updateModifierVisuals()
+    }
+
+    private fun onExtraKey(keyCode: Int, codePoint: Int, modKind: Int) {
+        when (modKind) {
+            MOD_CTRL -> ctrlActive = !ctrlActive
+            MOD_ALT -> altActive = !altActive
+            MOD_SHIFT -> shiftActive = !shiftActive
+            else -> {
+                val t = terminalSession
+                if (t != null && t.isRunning) {
+                    if (keyCode != 0) {
+                        termView.handleKeyCode(keyCode, currentKeyMod())
+                        clearModifiers()
+                    } else if (codePoint != 0) {
+                        termView.inputCodePoint(codePoint, false, false)
+                    }
+                }
+            }
+        }
+        updateModifierVisuals()
+    }
+
+    private fun currentKeyMod(): Int {
+        var m = 0
+        if (ctrlActive) m = m or KeyHandler.KEYMOD_CTRL
+        if (altActive) m = m or KeyHandler.KEYMOD_ALT
+        if (shiftActive) m = m or KeyHandler.KEYMOD_SHIFT
+        return m
+    }
+
+    internal fun clearModifiers() {
+        if (!ctrlActive && !altActive && !shiftActive) return
+        ctrlActive = false
+        altActive = false
+        shiftActive = false
+        runOnUiThread { updateModifierVisuals() }
+    }
+
+    private fun updateModifierVisuals() {
+        applyModState(MOD_CTRL, ctrlActive)
+        applyModState(MOD_ALT, altActive)
+        applyModState(MOD_SHIFT, shiftActive)
+    }
+
+    private fun applyModState(kind: Int, on: Boolean) {
+        val v = modKeyViews[kind] ?: return
+        v.setBackgroundResource(if (on) R.drawable.bg_extra_key_active else R.drawable.bg_extra_key)
+        v.setTextColor(if (on) Color.BLACK else keyColor)
+    }
+
     private fun showQuickDialog() {
         val entries = TermSettings.quickEntries(this).toMutableList()
         val items = mutableListOf<String>()
@@ -503,6 +655,10 @@ class TerminalActivity : AppCompatActivity() {
     private fun shQuote(path: String): String = "'" + path.replace("'", "'\\''") + "'"
 
     companion object {
+        private const val MOD_NONE = 0
+        private const val MOD_CTRL = 1
+        private const val MOD_ALT = 2
+        private const val MOD_SHIFT = 3
         private const val SHELL_RC = """
 [ -r /system/etc/mkshrc ] && . /system/etc/mkshrc
 alias ls='ls --color=auto'
@@ -613,15 +769,18 @@ private object ViewClient : TerminalViewClient {
 
     override fun onLongPress(event: MotionEvent?): Boolean = false
 
-    override fun readControlKey(): Boolean = false
+    override fun readControlKey(): Boolean = currentTerminal?.ctrlActive == true
 
-    override fun readAltKey(): Boolean = false
+    override fun readAltKey(): Boolean = currentTerminal?.altActive == true
 
-    override fun readShiftKey(): Boolean = false
+    override fun readShiftKey(): Boolean = currentTerminal?.shiftActive == true
 
     override fun readFnKey(): Boolean = false
 
-    override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession?): Boolean = false
+    override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession?): Boolean {
+        currentTerminal?.clearModifiers()
+        return false
+    }
 
     override fun onEmulatorSet() {
         currentTerminal?.let { it.termView.requestFocus(); it.showKeyboard() }

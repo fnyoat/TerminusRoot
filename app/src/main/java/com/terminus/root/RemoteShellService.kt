@@ -6,11 +6,13 @@ import android.net.LocalSocketAddress
 import android.os.Binder
 import android.os.IBinder
 import android.system.Os
+import android.system.OsConstants
 import android.util.Log
 import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.File
+import java.io.FileDescriptor
 import java.io.InputStreamReader
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -43,6 +45,7 @@ class RemoteShellService : IShellService.Stub {
     private var ptyEnded = false
     private var ctrlPath: String? = null
     private var binPath: String? = null
+    private var rcPath: String? = null
     private var markerPath: String? = null
     private var ptyBuffer = ByteArrayOutputStream()
 
@@ -56,6 +59,31 @@ class RemoteShellService : IShellService.Stub {
                 f.delete()
             }
         } catch (_: Throwable) {
+        }
+    }
+
+    private fun writeSecure(path: String, bytes: ByteArray, mode: Int): String? {
+        try {
+            File(path).delete()
+        } catch (_: Throwable) {
+        }
+        var fd: FileDescriptor? = null
+        try {
+            fd = Os.open(
+                path,
+                OsConstants.O_CREAT or OsConstants.O_EXCL or OsConstants.O_WRONLY,
+                mode
+            )
+            Os.write(fd, bytes, 0, bytes.size)
+            return path
+        } catch (t: Throwable) {
+            Log.e(TAG, "writeSecure failed: $path", t)
+            return null
+        } finally {
+            try {
+                fd?.let { Os.close(it) }
+            } catch (_: Throwable) {
+            }
         }
     }
 
@@ -173,19 +201,9 @@ class RemoteShellService : IShellService.Stub {
         linkCallbackDeath(cb)
 
         val exePath: String
-        try {
-            val f = File("/data/local/tmp", "termbridge_pty_${android.os.Process.myPid()}_${System.currentTimeMillis()}.bin")
-            f.writeBytes(bin ?: ByteArray(0))
-            f.setExecutable(true, false)
-            f.setReadable(true, false)
-            try {
-                Os.chmod(f.absolutePath, MODE_PRIVATE)
-            } catch (_: Throwable) {
-            }
-            synchronized(ptyLock) { binPath = f.absolutePath }
-            exePath = f.absolutePath
-        } catch (t: Throwable) {
-            Log.e(TAG, "write bin failed", t)
+        val binFile = "/data/local/tmp/termbridge_pty_${android.os.Process.myPid()}_${System.currentTimeMillis()}.bin"
+        val written = writeSecure(binFile, bin ?: ByteArray(0), MODE_BIN)
+        if (written == null) {
             try {
                 cb?.onExit(-1)
             } catch (_: Throwable) {
@@ -193,24 +211,19 @@ class RemoteShellService : IShellService.Stub {
             running.set(false)
             return
         }
+        synchronized(ptyLock) { binPath = written }
+        exePath = written
 
         val ctrl = "/data/local/tmp/termbridge_ctrl_${android.os.Process.myPid()}_${System.currentTimeMillis()}"
         ctrlPath = ctrl
         markerPath = "$ctrl.idle"
 
-        val shellRcPath = try {
-            val rc = File("/data/local/tmp", "terminus_shellrc")
-            rc.writeBytes(SHELL_RC.toByteArray())
-            rc.setReadable(true, false)
-            try {
-                Os.chmod(rc.absolutePath, MODE_PRIVATE)
-            } catch (_: Throwable) {
-            }
-            rc.absolutePath
-        } catch (t: Throwable) {
-            Log.e(TAG, "write shellrc failed", t)
-            null
-        }
+        val shellRcPath = writeSecure(
+            "/data/local/tmp/terminus_shellrc_${android.os.Process.myPid()}_${System.currentTimeMillis()}",
+            SHELL_RC.toByteArray(),
+            MODE_RC
+        )
+        synchronized(ptyLock) { rcPath = shellRcPath }
 
         val command = mutableListOf(
             exePath, "pty", cwd ?: "/", rows.toString(), cols.toString(),
@@ -470,6 +483,13 @@ class RemoteShellService : IShellService.Stub {
                 }
             }
             binPath = null
+            rcPath?.let { path ->
+                try {
+                    File(path).delete()
+                } catch (_: Throwable) {
+                }
+            }
+            rcPath = null
             ptyBuffer = ByteArrayOutputStream()
         }
     }
@@ -478,7 +498,8 @@ class RemoteShellService : IShellService.Stub {
         private const val TAG = "RemoteShellService"
         private const val EXPECTED_PACKAGE = "com.terminus.root"
         private const val MAX_BUFFER = 256 * 1024
-        private const val MODE_PRIVATE = 448
+        private const val MODE_BIN = 0x1C0
+        private const val MODE_RC = 0x180
         private const val SHELL_RC = """
 [ -r /system/etc/mkshrc ] && . /system/etc/mkshrc
 alias ls='ls --color=auto'

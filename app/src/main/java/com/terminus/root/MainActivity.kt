@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity() {
         settingsLink.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
 
         if (intent?.getBooleanExtra("auto_default", false) == true) {
-            startDefaultSession(intent?.getBooleanExtra("auto_detach", false) == true)
+            startDefaultSession(intent?.getBooleanExtra("auto_detach", false) == true, reuse = true)
         }
     }
     
@@ -116,21 +116,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    private fun startDefaultSession(detach: Boolean = false) {
+    private fun startDefaultSession(detach: Boolean = false, reuse: Boolean = false) {
         val template = manager.resolveDefaultTemplate(this)
-        val session = Session(
+        val shell = template?.shell ?: ShellLocator.findShell()
+        val cwd = template?.pathCwd ?: "/"
+        val existing = if (reuse) manager.findReusable {
+            it.templateId == template?.id &&
+                it.shell == shell &&
+                it.cwd == cwd &&
+                it.useSu == (template?.useSu == true) &&
+                it.useShizuku == (template?.useShizuku == true)
+        } else null
+        val session = existing ?: Session(
             name = getString(R.string.default_terminal_name),
-            shell = template?.shell ?: ShellLocator.findShell(),
+            shell = shell,
             useSu = template?.useSu == true,
             useShizuku = template?.useShizuku == true,
-            cwd = template?.pathCwd ?: "/",
+            cwd = cwd,
             chroot = template?.chrootView,
             extraArgs = template?.extraArgs ?: "",
             uid = template?.uid ?: "",
             gid = template?.gid ?: "",
             templateId = template?.id
         )
-        manager.addSession(session)
+        if (existing == null) manager.addSession(session)
         val intent = Intent(this, TerminalActivity::class.java)
         intent.putExtra("session", session)
         intent.putExtra("auto_detach", detach)

@@ -43,21 +43,34 @@ class SessionManager(private val context: Context) {
     }
     
     private fun saveSessions() {
-        try {
-            file.writeText(gson.toJson(sessions))
-        } catch (e: Exception) {
-        }
+        atomicWrite(file, gson.toJson(sessions))
     }
     
     private fun saveTemplates() {
+        atomicWrite(templateFile, gson.toJson(templates))
+    }
+    
+    private fun atomicWrite(target: File, content: String) {
         try {
-            templateFile.writeText(gson.toJson(templates))
+            val tmp = File(target.parentFile, "${target.name}.tmp")
+            tmp.writeText(content)
+            if (!tmp.renameTo(target)) {
+                target.writeText(content)
+                tmp.delete()
+            }
         } catch (e: Exception) {
+            try {
+                File(target.parentFile, "${target.name}.tmp").delete()
+            } catch (_: Exception) {
+            }
         }
     }
     
     fun getSessions(): List<Session> = sessions.toList()
     fun getTemplates(): List<Template> = buildBuiltInTemplates() + templates
+
+    fun findReusable(match: (Session) -> Boolean): Session? =
+        sessions.firstOrNull { !it.detached && match(it) }
 
     fun resolveDefaultTemplate(context: Context): Template? {
         val id = TermSettings.defaultTemplateId(context)
